@@ -73,12 +73,17 @@ function Login() {
           </button>
         </div>
 
+        <p style={styles.registroLink}>
+              ¿No tienes cuenta?{' '}
+                <Link to="/registro" style={styles.link}>Regístrate aquí</Link>
+        </p>
+
         <div style={styles.ayuda}>
-          <p style={styles.ayudaTexto}>Credenciales de prueba:</p>
-          <p style={styles.ayudaTexto}>Anfitrión: admin@rentafacil.com / 1234</p>
-          <p style={styles.ayudaTexto}>Inquilino: usuario@rentafacil.com / 1234</p>
+            <p style={styles.ayudaTexto}>Credenciales de prueba:</p>
+            <p style={styles.ayudaTexto}>Anfitrión: admin@rentafacil.com / 1234</p>
+            <p style={styles.ayudaTexto}>Inquilino: usuario@rentafacil.com / 1234</p>
+            </div>
         </div>
-      </div>
     </div>
   )
 }
@@ -163,7 +168,18 @@ const styles = {
     fontSize: '0.8rem',
     color: '#888',
     margin: '0.2rem 0'
-  }
+  },
+  registroLink: {
+  textAlign: 'center',
+  fontSize: '0.9rem',
+  color: '#888',
+  marginTop: '1rem'
+    },
+  link: {
+  color: '#e94560',
+  textDecoration: 'none',
+  fontWeight: 'bold'
+    }
 }
 
 export default Login

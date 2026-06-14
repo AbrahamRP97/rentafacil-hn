@@ -7,6 +7,7 @@ import Home from './pages/Home'
 import Propiedades from './pages/Propiedades'
 import DetallePropiedades from './pages/DetallePropiedades'
 import Login from './pages/Login'
+import Registro from './pages/Registro'
 import PanelAdmin from './pages/PanelAdmin'
 import RutaProtegida from './components/RutaProtegida'
 import './index.css'
@@ -17,11 +18,12 @@ createRoot(document.getElementById('root')).render(
       <AuthProvider>
         <Navbar />
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/propiedades" element={<Propiedades />} />
+          <Route path="/"                element={<Home />} />
+          <Route path="/propiedades"     element={<Propiedades />} />
           <Route path="/propiedades/:id" element={<DetallePropiedades />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/admin" element={
+          <Route path="/login"           element={<Login />} />
+          <Route path="/registro"        element={<Registro />} />
+          <Route path="/admin"           element={
             <RutaProtegida rol="anfitrion">
               <PanelAdmin />
             </RutaProtegida>
