@@ -1,7 +1,12 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
+  const [error, setError] = useState(null)
+  const { login } = useAuth()
+  const navigate = useNavigate()
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -9,7 +14,25 @@ function Login() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    alert(`Iniciando sesión con: ${form.email}`)
+    setError(null)
+
+    // Validación básica
+    if (!form.email || !form.password) {
+      setError('Por favor completa todos los campos')
+      return
+    }
+
+    // Simulación temporal hasta conectar Supabase
+    // Aquí se reemplazará con la autenticación real de Supabase
+    if (form.email === 'admin@rentafacil.com' && form.password === '1234') {
+      login({ email: form.email, rol: 'anfitrion', nombre: 'Administrador' })
+      navigate('/admin')
+    } else if (form.email === 'usuario@rentafacil.com' && form.password === '1234') {
+      login({ email: form.email, rol: 'inquilino', nombre: 'Usuario' })
+      navigate('/')
+    } else {
+      setError('Correo o contraseña incorrectos')
+    }
   }
 
   return (
@@ -17,6 +40,8 @@ function Login() {
       <div style={styles.card}>
         <h2 style={styles.titulo}>Iniciar Sesión</h2>
         <p style={styles.subtitulo}>Bienvenido a RentaFácil HN</p>
+
+        {error && <p style={styles.error}>{error}</p>}
 
         <div style={styles.form}>
           <div style={styles.campo}>
@@ -46,6 +71,12 @@ function Login() {
           <button onClick={handleSubmit} style={styles.boton}>
             Iniciar Sesión
           </button>
+        </div>
+
+        <div style={styles.ayuda}>
+          <p style={styles.ayudaTexto}>Credenciales de prueba:</p>
+          <p style={styles.ayudaTexto}>Anfitrión: admin@rentafacil.com / 1234</p>
+          <p style={styles.ayudaTexto}>Inquilino: usuario@rentafacil.com / 1234</p>
         </div>
       </div>
     </div>
@@ -80,6 +111,15 @@ const styles = {
     textAlign: 'center',
     marginBottom: '2rem'
   },
+  error: {
+    backgroundColor: '#ffe0e0',
+    color: '#e94560',
+    padding: '0.8rem',
+    borderRadius: '4px',
+    textAlign: 'center',
+    marginBottom: '1rem',
+    fontSize: '0.9rem'
+  },
   form: {
     display: 'flex',
     flexDirection: 'column',
@@ -112,6 +152,17 @@ const styles = {
     fontWeight: 'bold',
     cursor: 'pointer',
     marginTop: '0.5rem'
+  },
+  ayuda: {
+    marginTop: '1.5rem',
+    padding: '1rem',
+    backgroundColor: '#f5f5f5',
+    borderRadius: '4px'
+  },
+  ayudaTexto: {
+    fontSize: '0.8rem',
+    color: '#888',
+    margin: '0.2rem 0'
   }
 }
 
