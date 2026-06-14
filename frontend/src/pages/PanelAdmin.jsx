@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { getPropiedades, getPropietarios, getInquilinos, getContratos, getPagos, createPropiedad } from '../services/api'
+import { getPropiedades, getPropietarios, getInquilinos, getContratos, getPagos, createPropiedad,
+  getImagenes, createImagen, deleteImagen } from '../services/api'
 
 function PanelAdmin() {
   const [stats, setStats] = useState({
@@ -12,6 +13,11 @@ function PanelAdmin() {
   const [propiedades, setPropiedades] = useState([])
   const [loading, setLoading] = useState(true)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
+  const [imagenes, setImagenes] = useState([])
+  const [propiedadSeleccionada, setPropiedadSeleccionada] = useState(null)
+  const [urlImagen, setUrlImagen] = useState('')
+  const [esPortada, setEsPortada] = useState(false)
+  const [mostrarImagenes, setMostrarImagenes] = useState(false)
   const [exito, setExito] = useState(false)
   const [error, setError] = useState(null)
   const [form, setForm] = useState({
@@ -45,6 +51,46 @@ function PanelAdmin() {
       setPropiedades(p.data)
       setLoading(false)
     }).catch(() => setLoading(false))
+
+    const cargarImagenes = async (id_propiedad) => {
+      try {
+        const res = await getImagenes(id_propiedad)
+          setImagenes(res.data)
+      } catch {
+        setImagenes([])
+      }
+    }
+
+      const handleVerImagenes = (propiedad) => {
+        setPropiedadSeleccionada(propiedad)
+        setMostrarImagenes(true)
+        cargarImagenes(propiedad.id_propiedad)
+      }
+
+      const handleAgregarImagen = async () => {
+        if (!urlImagen) return
+        try {
+          await createImagen({
+            id_propiedad: propiedadSeleccionada.id_propiedad,
+            url_imagen: urlImagen,
+            es_portada: esPortada
+          })
+          setUrlImagen('')
+          setEsPortada(false)
+          cargarImagenes(propiedadSeleccionada.id_propiedad)
+        } catch {
+          setError('Error al agregar la imagen')
+        }
+      }
+
+      const handleEliminarImagen = async (id_imagen) => {
+        try {
+          await deleteImagen(id_imagen)
+          cargarImagenes(propiedadSeleccionada.id_propiedad)
+        } catch {
+          setError('Error al eliminar la imagen')
+        }
+      }
   }
 
   useEffect(() => {
@@ -228,6 +274,7 @@ function PanelAdmin() {
                 <th style={styles.th}>Estado</th>
                 <th style={styles.th}>Habitaciones</th>
                 <th style={styles.th}>Baños</th>
+                <th style={styles.th}>Imagenes</th>
               </tr>
             </thead>
             <tbody>
@@ -249,12 +296,94 @@ function PanelAdmin() {
                   </td>
                   <td style={styles.td}>{p.habitaciones}</td>
                   <td style={styles.td}>{p.banos}</td>
+                  <td style={styles.td}>
+                  <button
+                    onClick={() => handleVerImagenes(p)}
+                    style={styles.botonImagenes}
+                  >
+                      Gestionar Imagenes
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </div>
+      {/* Modal de imágenes */}
+        {mostrarImagenes && propiedadSeleccionada && (
+          <div style={styles.modalOverlay}>
+            <div style={styles.modal}>
+              <div style={styles.modalHeader}>
+                <h3 style={styles.modalTitulo}>
+                  🖼️ Imágenes — {propiedadSeleccionada.titulo}
+                </h3>
+                <button
+                  onClick={() => { setMostrarImagenes(false); setPropiedadSeleccionada(null); setImagenes([]) }}
+                  style={styles.botonCerrar}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Agregar imagen */}
+              <div style={styles.agregarImagen}>
+                <h4 style={{ margin: '0 0 1rem 0', color: '#1a1a2e' }}>Agregar imagen</h4>
+                <div style={styles.campo}>
+                  <label style={styles.label}>URL de la imagen *</label>
+                  <input
+                    type="text"
+                    value={urlImagen}
+                    onChange={(e) => setUrlImagen(e.target.value)}
+                    placeholder="https://ejemplo.com/imagen.jpg"
+                    style={styles.input}
+                  />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.5rem 0' }}>
+                  <input
+                    type="checkbox"
+                    id="esPortada"
+                    checked={esPortada}
+                    onChange={(e) => setEsPortada(e.target.checked)}
+                  />
+                  <label htmlFor="esPortada" style={styles.label}>Usar como portada</label>
+                </div>
+                <button onClick={handleAgregarImagen} style={styles.botonGuardar}>
+                  Agregar imagen
+                </button>
+              </div>
+
+              {/* Lista de imágenes */}
+              <div style={styles.listaImagenes}>
+                {imagenes.length === 0 ? (
+                  <p style={styles.mensaje}>No hay imágenes registradas para esta propiedad.</p>
+                ) : (
+                  <div style={styles.gridImagenes}>
+                    {imagenes.map(img => (
+                      <div key={img.id_imagen} style={styles.imagenCard}>
+                        <img
+                          src={img.url_imagen}
+                          alt="Propiedad"
+                          style={styles.imagen}
+                          onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=Sin+imagen' }}
+                        />
+                        {img.es_portada && (
+                          <span style={styles.badgePortada}>⭐ Portada</span>
+                        )}
+                        <button
+                          onClick={() => handleEliminarImagen(img.id_imagen)}
+                          style={styles.botonEliminar}
+                        >
+                          🗑️ Eliminar
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   )
 }
@@ -395,7 +524,97 @@ const styles = {
     marginBottom: '1rem',
     fontSize: '0.9rem'
   },
-  mensaje: { textAlign: 'center', color: '#888', padding: '2rem' }
-}
+  mensaje: { textAlign: 'center', color: '#888', padding: '2rem' },
+    botonImagenes: {
+      padding: '0.4rem 0.8rem',
+      backgroundColor: '#1a1a2e',
+      color: 'white',
+      border: 'none',
+      borderRadius: '4px',
+      cursor: 'pointer',
+      fontSize: '0.8rem'
+    },
+    modalOverlay: {
+      position: 'fixed',
+      top: 0, left: 0, right: 0, bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000
+    },
+    modal: {
+      backgroundColor: 'white',
+      borderRadius: '8px',
+      padding: '2rem',
+      width: '90%',
+      maxWidth: '700px',
+      maxHeight: '80vh',
+      overflowY: 'auto',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+    },
+    modalHeader: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: '1.5rem'
+    },
+    modalTitulo: {
+      fontSize: '1.2rem',
+      color: '#1a1a2e',
+      margin: 0
+    },
+    botonCerrar: {
+      backgroundColor: 'transparent',
+      border: 'none',
+      fontSize: '1.2rem',
+      cursor: 'pointer',
+      color: '#888'
+    },
+    agregarImagen: {
+      backgroundColor: '#f9f9f9',
+      borderRadius: '8px',
+      padding: '1.2rem',
+      marginBottom: '1.5rem',
+      border: '1px solid #eee'
+    },
+    listaImagenes: {
+      marginTop: '1rem'
+    },
+    gridImagenes: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+      gap: '1rem'
+    },
+    imagenCard: {
+      borderRadius: '8px',
+      overflow: 'hidden',
+      border: '1px solid #eee',
+      display: 'flex',
+      flexDirection: 'column'
+    },
+    imagen: {
+      width: '100%',
+      height: '120px',
+      objectFit: 'cover'
+    },
+    badgePortada: {
+      backgroundColor: '#ffc107',
+      color: '#1a1a2e',
+      fontSize: '0.75rem',
+      fontWeight: 'bold',
+      padding: '0.3rem 0.5rem',
+      textAlign: 'center'
+    },
+    botonEliminar: {
+      padding: '0.4rem',
+      backgroundColor: '#e94560',
+      color: 'white',
+      border: 'none',
+      cursor: 'pointer',
+      fontSize: '0.8rem',
+      width: '100%'
+    }
+  }
 
 export default PanelAdmin

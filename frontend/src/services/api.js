@@ -15,5 +15,8 @@ export const getInquilinos = () => api.get('/inquilinos')
 export const getReservas = () => api.get('/reservas')
 export const getContratos = () => api.get('/contratos')
 export const getPagos = () => api.get('/pagos')
+export const getImagenes = (id_propiedad) => api.get(`/imagenes/${id_propiedad}`)
+export const createImagen = (data) => api.post('/imagenes', data)
+export const deleteImagen = (id) => api.delete(`/imagenes/${id}`)
 
 export default api
