@@ -5,16 +5,16 @@ const router = Router()
 
 router.get('/', async (req, res) => {
   const { data, error } = await supabase
-    .from('PAGOS')
-    .select('*, CONTRATOS(*)')
+    .from('pagos')
+    .select('*, CONTRATOS:contratos(*)')
   if (error) return res.status(500).json({ error: error.message })
   res.json(data)
 })
 
 router.get('/:id', async (req, res) => {
   const { data, error } = await supabase
-    .from('PAGOS')
-    .select('*, CONTRATOS(*)')
+    .from('pagos')
+    .select('*, CONTRATOS:contratos(*)')
     .eq('id_pago', req.params.id)
     .single()
   if (error) return res.status(404).json({ error: 'Pago no encontrado' })
@@ -23,7 +23,7 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   const { data, error } = await supabase
-    .from('PAGOS')
+    .from('pagos')
     .insert([req.body])
     .select()
   if (error) return res.status(500).json({ error: error.message })
@@ -32,7 +32,7 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   const { data, error } = await supabase
-    .from('PAGOS')
+    .from('pagos')
     .update(req.body)
     .eq('id_pago', req.params.id)
     .select()
@@ -42,7 +42,7 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   const { error } = await supabase
-    .from('PAGOS')
+    .from('pagos')
     .delete()
     .eq('id_pago', req.params.id)
   if (error) return res.status(500).json({ error: error.message })

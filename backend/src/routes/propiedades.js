@@ -5,16 +5,16 @@ const router = Router()
 
 router.get('/', async (req, res) => {
   const { data, error } = await supabase
-    .from('PROPIEDADES')
-    .select('*, UBICACIONES(*), PROPIETARIOS(*)')
+    .from('propiedades')
+    .select('*, UBICACIONES:ubicaciones(*), PROPIETARIOS:propietarios(*)')
   if (error) return res.status(500).json({ error: error.message })
   res.json(data)
 })
 
 router.get('/:id', async (req, res) => {
   const { data, error } = await supabase
-    .from('PROPIEDADES')
-    .select('*, UBICACIONES(*), PROPIETARIOS(*), IMAGENES_PROPIEDAD(*)')
+    .from('propiedades')
+    .select('*, UBICACIONES:ubicaciones(*), PROPIETARIOS:propietarios(*), IMAGENES_PROPIEDAD:imagenes_propiedad(*)')
     .eq('id_propiedad', req.params.id)
     .single()
   if (error) return res.status(404).json({ error: 'Propiedad no encontrada' })
@@ -23,7 +23,7 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   const { data, error } = await supabase
-    .from('PROPIEDADES')
+    .from('propiedades')
     .insert([req.body])
     .select()
   if (error) return res.status(500).json({ error: error.message })
@@ -32,7 +32,7 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   const { data, error } = await supabase
-    .from('PROPIEDADES')
+    .from('propiedades')
     .update(req.body)
     .eq('id_propiedad', req.params.id)
     .select()
@@ -42,7 +42,7 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   const { error } = await supabase
-    .from('PROPIEDADES')
+    .from('propiedades')
     .delete()
     .eq('id_propiedad', req.params.id)
   if (error) return res.status(500).json({ error: error.message })

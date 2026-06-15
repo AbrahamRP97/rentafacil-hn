@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { getPropiedades, getPropietarios, getInquilinos, getContratos, getPagos, createPropiedad,
   getImagenes, createImagen, deleteImagen } from '../services/api'
 
@@ -179,6 +180,9 @@ function PanelAdmin() {
       <div style={styles.seccion}>
         <div style={styles.seccionHeader}>
           <h3 style={styles.seccionTitulo}>Propiedades registradas</h3>
+          <Link to="/admin/consultas-avanzadas" style={styles.botonConsulta}>
+            Consultas avanzadas
+          </Link>
           <button
             onClick={() => { setMostrarFormulario(!mostrarFormulario); setError(null) }}
             style={styles.botonAgregar}
@@ -433,9 +437,23 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: '1rem',
+    flexWrap: 'wrap',
     marginBottom: '1rem'
   },
   seccionTitulo: { fontSize: '1.2rem', color: '#1a1a2e', margin: 0 },
+  botonConsulta: {
+    padding: '0.5rem 1.2rem',
+    backgroundColor: '#e94560',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontWeight: 'bold',
+    fontSize: '0.9rem',
+    textDecoration: 'none',
+    marginLeft: 'auto'
+  },
   botonAgregar: {
     padding: '0.5rem 1.2rem',
     backgroundColor: '#1a1a2e',

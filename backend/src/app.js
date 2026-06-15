@@ -10,6 +10,7 @@ import contratosRouter      from './routes/contratos.js'
 import pagosRouter          from './routes/pagos.js'
 import calificacionesRouter from './routes/calificaciones.js'
 import imagenesRouter       from './routes/imagenes.js'
+import consultasRouter      from './routes/consultasAvanzadas.js'
 
 dotenv.config()
 
@@ -25,6 +26,7 @@ app.use('/api/contratos',      contratosRouter)
 app.use('/api/pagos',          pagosRouter)
 app.use('/api/calificaciones', calificacionesRouter)
 app.use('/api/imagenes',       imagenesRouter)
+app.use('/api/consultas-avanzadas', consultasRouter)
 
 app.get('/', (req, res) => {
   res.json({ message: 'RentaFácil HN API funcionando ✅' })

@@ -5,16 +5,16 @@ const router = Router()
 
 router.get('/', async (req, res) => {
   const { data, error } = await supabase
-    .from('CALIFICACIONES')
-    .select('*, CONTRATOS(*)')
+    .from('calificaciones')
+    .select('*, CONTRATOS:contratos(*)')
   if (error) return res.status(500).json({ error: error.message })
   res.json(data)
 })
 
 router.get('/:id', async (req, res) => {
   const { data, error } = await supabase
-    .from('CALIFICACIONES')
-    .select('*, CONTRATOS(*)')
+    .from('calificaciones')
+    .select('*, CONTRATOS:contratos(*)')
     .eq('id_calificacion', req.params.id)
     .single()
   if (error) return res.status(404).json({ error: 'Calificación no encontrada' })
@@ -23,7 +23,7 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   const { data, error } = await supabase
-    .from('CALIFICACIONES')
+    .from('calificaciones')
     .insert([req.body])
     .select()
   if (error) return res.status(500).json({ error: error.message })
@@ -32,7 +32,7 @@ router.post('/', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   const { error } = await supabase
-    .from('CALIFICACIONES')
+    .from('calificaciones')
     .delete()
     .eq('id_calificacion', req.params.id)
   if (error) return res.status(500).json({ error: error.message })

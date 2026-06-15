@@ -4,14 +4,14 @@ import supabase from '../db.js'
 const router = Router()
 
 router.get('/', async (req, res) => {
-  const { data, error } = await supabase.from('INQUILINOS').select('*')
+  const { data, error } = await supabase.from('inquilinos').select('*')
   if (error) return res.status(500).json({ error: error.message })
   res.json(data)
 })
 
 router.get('/:id', async (req, res) => {
   const { data, error } = await supabase
-    .from('INQUILINOS')
+    .from('inquilinos')
     .select('*')
     .eq('id_inquilino', req.params.id)
     .single()
@@ -21,7 +21,7 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   const { data, error } = await supabase
-    .from('INQUILINOS')
+    .from('inquilinos')
     .insert([req.body])
     .select()
   if (error) return res.status(500).json({ error: error.message })
@@ -30,7 +30,7 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   const { data, error } = await supabase
-    .from('INQUILINOS')
+    .from('inquilinos')
     .update(req.body)
     .eq('id_inquilino', req.params.id)
     .select()
@@ -40,7 +40,7 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   const { error } = await supabase
-    .from('INQUILINOS')
+    .from('inquilinos')
     .delete()
     .eq('id_inquilino', req.params.id)
   if (error) return res.status(500).json({ error: error.message })
