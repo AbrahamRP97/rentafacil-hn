@@ -32,7 +32,7 @@ router.get('/:id', async (req, res) => {
   const handler = handlers[req.params.id]
   if (!handler) return res.status(404).json({ error: 'Consulta avanzada no encontrada' })
 
-  const { data, error } = await handler()
+  const { data, error } = await handler(req.query)
   if (error) return res.status(500).json({ error: error.message })
 
   res.json({
@@ -66,50 +66,17 @@ async function propiedades_disponibles() {
   }
 }
 
-async function reservas_pendientes() {
-  const { data, error } = await supabase
-    .from('reservas')
-    .select('id_reserva, fecha_inicio, fecha_fin, estado, created_at, INQUILINOS:inquilinos(nombre, apellido, email), PROPIEDADES:propiedades(titulo, PROPIETARIOS:propietarios(nombre, apellido))')
-    .eq('estado', 'pendiente')
-    .order('created_at', { ascending: false })
-
-  return {
-    data: data?.map((item) => ({
-      id_reserva: item.id_reserva,
-      fecha_inicio: item.fecha_inicio,
-      fecha_fin: item.fecha_fin,
-      estado: item.estado,
-      inquilino: `${item.INQUILINOS?.nombre ?? ''} ${item.INQUILINOS?.apellido ?? ''}`.trim(),
-      email_inquilino: item.INQUILINOS?.email,
-      propiedad: item.PROPIEDADES?.titulo,
-      propietario: `${item.PROPIEDADES?.PROPIETARIOS?.nombre ?? ''} ${item.PROPIEDADES?.PROPIETARIOS?.apellido ?? ''}`.trim()
-    })),
-    error
-  }
+async function reservas_pendientes(params = {}) {
+  return supabase.rpc('fn_reservas_detalladas', {
+    p_estado: params.estado || 'pendiente'
+  })
 }
 
-async function historial_pagos() {
-  const { data, error } = await supabase
-    .from('contratos')
-    .select('id_contrato, RESERVAS:reservas(PROPIEDADES:propiedades(titulo), INQUILINOS:inquilinos(nombre, apellido)), PAGOS:pagos(fecha_pago, monto, metodo_pago, estado, referencia)')
-    .order('id_contrato', { ascending: true })
-
-  return {
-    data: data?.flatMap((contrato) => {
-      const pagos = contrato.PAGOS?.length ? contrato.PAGOS : [null]
-      return pagos.map((pago) => ({
-        id_contrato: contrato.id_contrato,
-        propiedad: contrato.RESERVAS?.PROPIEDADES?.titulo,
-        inquilino: `${contrato.RESERVAS?.INQUILINOS?.nombre ?? ''} ${contrato.RESERVAS?.INQUILINOS?.apellido ?? ''}`.trim(),
-        fecha_pago: pago?.fecha_pago ?? null,
-        monto: pago?.monto ?? null,
-        metodo_pago: pago?.metodo_pago ?? null,
-        estado: pago?.estado ?? null,
-        referencia: pago?.referencia ?? null
-      }))
-    }),
-    error
-  }
+async function historial_pagos(params = {}) {
+  const contratoId = Number(params.contrato_id || 1)
+  return supabase.rpc('fn_historial_pagos', {
+    p_id_contrato: contratoId
+  })
 }
 
 async function pagos_pendientes() {
@@ -156,36 +123,14 @@ async function promedio_calificaciones() {
   }
 }
 
-async function ingresos_propietario() {
-  const { data, error } = await supabase
-    .from('propietarios')
-    .select('id_propietario, nombre, apellido, PROPIEDADES:propiedades(id_propiedad, RESERVAS:reservas(CONTRATOS:contratos(PAGOS:pagos(monto, estado))))')
+async function ingresos_propietario(params = {}) {
+  const propietarioId = params.propietario_id
+    ? Number(params.propietario_id)
+    : null
 
-  return {
-    data: data?.map((propietario) => {
-      const propiedades = propietario.PROPIEDADES ?? []
-      const ingresos = propiedades.reduce((total, propiedad) => {
-        const reservas = propiedad.RESERVAS ?? []
-        return total + reservas.reduce((subtotal, reserva) => {
-          const contratos = Array.isArray(reserva.CONTRATOS) ? reserva.CONTRATOS : [reserva.CONTRATOS].filter(Boolean)
-          return subtotal + contratos.reduce((sumaContrato, contrato) => {
-            const pagos = contrato.PAGOS ?? []
-            return sumaContrato + pagos
-              .filter((pago) => pago.estado === 'completado')
-              .reduce((sumaPago, pago) => sumaPago + Number(pago.monto), 0)
-          }, 0)
-        }, 0)
-      }, 0)
-
-      return {
-        id_propietario: propietario.id_propietario,
-        propietario: `${propietario.nombre} ${propietario.apellido}`,
-        ingresos_completados: ingresos,
-        propiedades_publicadas: propiedades.length
-      }
-    }).sort((a, b) => b.ingresos_completados - a.ingresos_completados),
-    error
-  }
+  return supabase.rpc('fn_resumen_propietarios', {
+    p_id_propietario: propietarioId
+  })
 }
 
 async function propiedades_mas_solicitadas() {
