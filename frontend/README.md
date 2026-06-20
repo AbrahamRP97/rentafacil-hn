@@ -78,7 +78,7 @@ Inicia el servidor:
 npm run dev
 ```
 
-El backend correrá en `http://localhost:3000`
+El backend correrá en `https://rentafacil-hn-production.up.railway.app`
 
 ### 3. Configurar el Frontend
 
@@ -90,7 +90,7 @@ npm install
 npm run dev
 ```
 
-El frontend correrá en `http://localhost:5173`
+El frontend correrá en `https://rentafacil-hn.vercel.app/`
 
 ---
 
@@ -148,7 +148,7 @@ Los scripts SQL se encuentran en la carpeta `database/`.
 - [x] Frontend con React + Vite
 - [x] Páginas: Inicio, Propiedades, Detalle, Login, Registro, Panel Admin
 - [x] Rutas protegidas por rol
-- [ ] Autenticación real con Supabase Auth
-- [ ] Consultas avanzadas implementadas
-- [ ] Transacciones ACID
-- [ ] Control de concurrencia
+- [x] Autenticación real con Supabase Auth
+- [x] Consultas avanzadas implementadas
+- [x] Transacciones ACID
+- [x] Control de concurrencia
