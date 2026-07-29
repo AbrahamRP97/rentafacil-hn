@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'https://rentafacil-hn-production.up.railway.app/api'
+  baseURL: 'https://rentafacil-hn-backend.onrender.com'
 })
 
 export const getPropiedades = () => api.get('/propiedades')
