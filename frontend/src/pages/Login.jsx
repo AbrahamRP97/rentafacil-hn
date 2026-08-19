@@ -22,8 +22,6 @@ function Login() {
       return
     }
 
-    // Simulación temporal hasta conectar Supabase
-    // Aquí se reemplazará con la autenticación real de Supabase
     if (form.email === 'admin@rentafacil.com' && form.password === '1234') {
       login({ email: form.email, rol: 'anfitrion', nombre: 'Administrador' })
       navigate('/admin')
