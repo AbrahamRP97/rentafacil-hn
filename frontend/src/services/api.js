@@ -18,6 +18,10 @@ export const getPagos = () => api.get('/pagos')
 export const getImagenes = (id_propiedad) => api.get(`/imagenes/${id_propiedad}`)
 export const createImagen = (data) => api.post('/imagenes', data)
 export const deleteImagen = (id) => api.delete(`/imagenes/${id}`)
+export const uploadImagen = (formData) => 
+  api.post('imagenes/upload', formData, {
+    headers: {'Content-Type': 'multipart/form-data'}      
+    })
 export const getConsultasAvanzadas = () => api.get('/consultas-avanzadas')
 export const runConsultaAvanzada = (id) => api.get(`/consultas-avanzadas/${id}`)
 export const aprobarReserva = (data) => api.post('/transacciones/aprobar-reserva', data)
