@@ -34,6 +34,12 @@ function PanelAdmin() {
     id_ubicacion: ''
   })
 
+  // Imágenes que se van agregando en el formulario de "Nueva propiedad"
+  // (todavía no existen en la base de datos, se crean después de crear la propiedad)
+  const [imagenesNuevas, setImagenesNuevas] = useState([])
+  const [urlImagenNueva, setUrlImagenNueva] = useState('')
+  const [esPortadaNueva, setEsPortadaNueva] = useState(false)
+
   const cargarDatos = () => {
     Promise.all([
       getPropiedades(),
@@ -52,46 +58,61 @@ function PanelAdmin() {
       setPropiedades(p.data)
       setLoading(false)
     }).catch(() => setLoading(false))
+  }
 
-    const cargarImagenes = async (id_propiedad) => {
-      try {
-        const res = await getImagenes(id_propiedad)
-          setImagenes(res.data)
-      } catch {
-        setImagenes([])
-      }
+  const cargarImagenes = async (id_propiedad) => {
+    try {
+      const res = await getImagenes(id_propiedad)
+      setImagenes(res.data)
+    } catch {
+      setImagenes([])
     }
+  }
 
-      const handleVerImagenes = (propiedad) => {
-        setPropiedadSeleccionada(propiedad)
-        setMostrarImagenes(true)
-        cargarImagenes(propiedad.id_propiedad)
-      }
+  const handleVerImagenes = (propiedad) => {
+    setPropiedadSeleccionada(propiedad)
+    setMostrarImagenes(true)
+    cargarImagenes(propiedad.id_propiedad)
+  }
 
-      const handleAgregarImagen = async () => {
-        if (!urlImagen) return
-        try {
-          await createImagen({
-            id_propiedad: propiedadSeleccionada.id_propiedad,
-            url_imagen: urlImagen,
-            es_portada: esPortada
-          })
-          setUrlImagen('')
-          setEsPortada(false)
-          cargarImagenes(propiedadSeleccionada.id_propiedad)
-        } catch {
-          setError('Error al agregar la imagen')
-        }
-      }
+  const handleAgregarImagen = async () => {
+    if (!urlImagen) return
+    try {
+      await createImagen({
+        id_propiedad: propiedadSeleccionada.id_propiedad,
+        url_imagen: urlImagen,
+        es_portada: esPortada
+      })
+      setUrlImagen('')
+      setEsPortada(false)
+      cargarImagenes(propiedadSeleccionada.id_propiedad)
+    } catch {
+      setError('Error al agregar la imagen')
+    }
+  }
 
-      const handleEliminarImagen = async (id_imagen) => {
-        try {
-          await deleteImagen(id_imagen)
-          cargarImagenes(propiedadSeleccionada.id_propiedad)
-        } catch {
-          setError('Error al eliminar la imagen')
-        }
-      }
+  const handleEliminarImagen = async (id_imagen) => {
+    try {
+      await deleteImagen(id_imagen)
+      cargarImagenes(propiedadSeleccionada.id_propiedad)
+    } catch {
+      setError('Error al eliminar la imagen')
+    }
+  }
+
+  // --- Imágenes dentro del formulario de "Nueva propiedad" ---
+  const handleAgregarImagenNueva = () => {
+    if (!urlImagenNueva) return
+    setImagenesNuevas([
+      ...imagenesNuevas,
+      { url_imagen: urlImagenNueva, es_portada: esPortadaNueva }
+    ])
+    setUrlImagenNueva('')
+    setEsPortadaNueva(false)
+  }
+
+  const handleQuitarImagenNueva = (index) => {
+    setImagenesNuevas(imagenesNuevas.filter((_, i) => i !== index))
   }
 
   useEffect(() => {
@@ -112,7 +133,7 @@ function PanelAdmin() {
     }
 
     try {
-      await createPropiedad({
+      const res = await createPropiedad({
         ...form,
         precio_mensual:   parseFloat(form.precio_mensual),
         habitaciones:     parseInt(form.habitaciones),
@@ -121,6 +142,23 @@ function PanelAdmin() {
         id_propietario:   parseInt(form.id_propietario),
         id_ubicacion:     parseInt(form.id_ubicacion)
       })
+
+      const nuevaPropiedad = res.data
+      const idNuevaPropiedad = nuevaPropiedad.id_propiedad
+
+      // Crear cada imagen agregada en el formulario, ya con el id_propiedad real
+      if (imagenesNuevas.length > 0) {
+        await Promise.all(
+          imagenesNuevas.map(img =>
+            createImagen({
+              id_propiedad: idNuevaPropiedad,
+              url_imagen: img.url_imagen,
+              es_portada: img.es_portada
+            })
+          )
+        )
+      }
+
       setExito(true)
       setMostrarFormulario(false)
       setForm({
@@ -129,6 +167,7 @@ function PanelAdmin() {
         tipo: 'apartamento', estado: 'disponible',
         id_propietario: '', id_ubicacion: ''
       })
+      setImagenesNuevas([])
       cargarDatos()
       setTimeout(() => setExito(false), 3000)
     } catch (err) {
@@ -256,6 +295,58 @@ function PanelAdmin() {
                 <label style={styles.label}>ID Ubicación *</label>
                 <input type="number" name="id_ubicacion" value={form.id_ubicacion} onChange={handleChange} placeholder="1" style={styles.input} />
               </div>
+            </div>
+
+            {/* Imágenes de la nueva propiedad */}
+            <div style={styles.agregarImagen}>
+              <h4 style={{ margin: '0 0 1rem 0', color: '#1a1a2e' }}>Imágenes de la propiedad</h4>
+              <div style={styles.campo}>
+                <label style={styles.label}>URL de la imagen</label>
+                <input
+                  type="text"
+                  value={urlImagenNueva}
+                  onChange={(e) => setUrlImagenNueva(e.target.value)}
+                  placeholder="https://ejemplo.com/imagen.jpg"
+                  style={styles.input}
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.5rem 0' }}>
+                <input
+                  type="checkbox"
+                  id="esPortadaNueva"
+                  checked={esPortadaNueva}
+                  onChange={(e) => setEsPortadaNueva(e.target.checked)}
+                />
+                <label htmlFor="esPortadaNueva" style={styles.label}>Usar como portada</label>
+              </div>
+              <button type="button" onClick={handleAgregarImagenNueva} style={styles.botonImagenes}>
+                + Agregar imagen a la lista
+              </button>
+
+              {imagenesNuevas.length > 0 && (
+                <div style={styles.gridImagenes}>
+                  {imagenesNuevas.map((img, index) => (
+                    <div key={index} style={styles.imagenCard}>
+                      <img
+                        src={img.url_imagen}
+                        alt="Nueva propiedad"
+                        style={styles.imagen}
+                        onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=Sin+imagen' }}
+                      />
+                      {img.es_portada && (
+                        <span style={styles.badgePortada}>⭐ Portada</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleQuitarImagenNueva(index)}
+                        style={styles.botonEliminar}
+                      >
+                        🗑️ Quitar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <button onClick={handleSubmit} style={styles.botonGuardar}>
