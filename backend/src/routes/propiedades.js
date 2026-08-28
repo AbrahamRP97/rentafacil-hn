@@ -6,7 +6,7 @@ const router = Router()
 router.get('/', async (req, res) => {
   const { data, error } = await supabase
     .from('propiedades')
-    .select('*, UBICACIONES:ubicaciones(*), PROPIETARIOS:propietarios(*)')
+    .select('*, UBICACIONES:ubicaciones(*), PROPIETARIOS:propietarios(*), IMAGENES_PROPIEDAD:imagenes_propiedad(*)')
   if (error) return res.status(500).json({ error: error.message })
   res.json(data)
 })

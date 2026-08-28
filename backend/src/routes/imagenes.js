@@ -4,10 +4,9 @@ import supabase from '../db.js'
 
 const router = Router()
 
-// Multer guarda el archivo en memoria (buffer) para subirlo directo a Supabase Storage
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 } // 5 MB máximo por imagen
+  limits: { fileSize: 5 * 1024 * 1024 } // 5 MB por imagen
 })
 
 const BUCKET = 'imagenes-propiedades'
@@ -40,55 +39,81 @@ router.post('/', async (req, res) => {
   res.status(201).json(data[0])
 })
 
-// POST /upload — subir un archivo real
+// POST /upload — subir UN archivo real. El frontend llama esta ruta una vez por
+// cada archivo seleccionado (en paralelo) para soportar selección múltiple.
 router.post('/upload', upload.single('imagen'), async (req, res) => {
   try {
     const { id_propiedad, es_portada } = req.body
     const file = req.file
 
-    if (!id_propiedad) {
-      return res.status(400).json({ error: 'id_propiedad es obligatorio' })
-    }
-    if (!file) {
-      return res.status(400).json({ error: 'No se recibió ningún archivo' })
-    }
+    if (!id_propiedad) return res.status(400).json({ error: 'id_propiedad es obligatorio' })
+    if (!file) return res.status(400).json({ error: 'No se recibió ningún archivo' })
 
-    // Nombre único para evitar colisiones entre imágenes de distintas propiedades
     const extension = file.originalname.split('.').pop()
-    const nombreArchivo = `propiedad-${id_propiedad}-${Date.now()}.${extension}`
+    const nombreArchivo = `propiedad-${id_propiedad}-${Date.now()}-${Math.round(Math.random() * 1e6)}.${extension}`
 
     const { error: errorSubida } = await supabase.storage
       .from(BUCKET)
-      .upload(nombreArchivo, file.buffer, {
-        contentType: file.mimetype,
-        upsert: false
-      })
+      .upload(nombreArchivo, file.buffer, { contentType: file.mimetype, upsert: false })
 
     if (errorSubida) {
       return res.status(500).json({ error: `Error al subir el archivo: ${errorSubida.message}` })
     }
 
-    // Obtener la URL pública del archivo recién subido
-    const { data: urlData } = supabase.storage
-      .from(BUCKET)
-      .getPublicUrl(nombreArchivo)
-
+    const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(nombreArchivo)
     const url_imagen = urlData.publicUrl
+    const esPortadaBool = es_portada === 'true' || es_portada === true
 
-    // Registrar la imagen en la tabla, igual que el flujo por URL
+    // Si esta imagen va a ser la portada, primero se desmarca cualquier otra portada existente
+    if (esPortadaBool) {
+      await supabase
+        .from('imagenes_propiedad')
+        .update({ es_portada: false })
+        .eq('id_propiedad', id_propiedad)
+    }
+
     const { data, error } = await supabase
       .from('imagenes_propiedad')
-      .insert([{
-        id_propiedad,
-        url_imagen,
-        es_portada: es_portada === 'true' || es_portada === true
-      }])
+      .insert([{ id_propiedad, url_imagen, es_portada: esPortadaBool }])
       .select()
 
     if (error) return res.status(500).json({ error: error.message })
     res.status(201).json(data[0])
   } catch (err) {
     res.status(500).json({ error: 'Error inesperado al procesar la imagen' })
+  }
+})
+
+// PUT /:id_imagen/portada — marcar una imagen existente como portada
+router.put('/:id_imagen/portada', async (req, res) => {
+  try {
+    const { id_imagen } = req.params
+
+    const { data: imagen, error: errorBusqueda } = await supabase
+      .from('imagenes_propiedad')
+      .select('id_propiedad')
+      .eq('id_imagen', id_imagen)
+      .single()
+
+    if (errorBusqueda || !imagen) {
+      return res.status(404).json({ error: 'Imagen no encontrada' })
+    }
+
+    await supabase
+      .from('imagenes_propiedad')
+      .update({ es_portada: false })
+      .eq('id_propiedad', imagen.id_propiedad)
+
+    const { data, error } = await supabase
+      .from('imagenes_propiedad')
+      .update({ es_portada: true })
+      .eq('id_imagen', id_imagen)
+      .select()
+
+    if (error) return res.status(500).json({ error: error.message })
+    res.json(data[0])
+  } catch (err) {
+    res.status(500).json({ error: 'Error inesperado al marcar la portada' })
   }
 })
 

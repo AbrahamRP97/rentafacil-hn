@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getPropiedades, getPropietarios, getInquilinos, getContratos, getPagos, createPropiedad,
-  getImagenes, uploadImagen, deleteImagen } from '../services/api'
+  getImagenes, uploadImagen, deleteImagen, setImagenPortada } from '../services/api'
 
 function PanelAdmin() {
   const [stats, setStats] = useState({
@@ -16,7 +16,7 @@ function PanelAdmin() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [imagenes, setImagenes] = useState([])
   const [propiedadSeleccionada, setPropiedadSeleccionada] = useState(null)
-  const [archivoImagen, setArchivoImagen] = useState(null)
+  const [archivosImagen, setArchivosImagen] = useState([]) // varios archivos a la vez
   const [esPortada, setEsPortada] = useState(false)
   const [mostrarImagenes, setMostrarImagenes] = useState(false)
   const [subiendoImagen, setSubiendoImagen] = useState(false)
@@ -36,10 +36,7 @@ function PanelAdmin() {
   })
 
   // Imágenes seleccionadas en el formulario de "Nueva propiedad", aún no subidas
-  // (se suben después de crear la propiedad, cuando ya existe un id_propiedad real)
   const [imagenesNuevas, setImagenesNuevas] = useState([]) // [{ file, previewUrl, es_portada }]
-  const [archivoImagenNueva, setArchivoImagenNueva] = useState(null)
-  const [esPortadaNueva, setEsPortadaNueva] = useState(false)
 
   const cargarDatos = () => {
     Promise.all([
@@ -76,27 +73,32 @@ function PanelAdmin() {
     cargarImagenes(propiedad.id_propiedad)
   }
 
-  // Subir imagen para una propiedad ya existente (desde el modal)
-  const handleAgregarImagen = async () => {
-    if (!archivoImagen) {
-      setError('Selecciona un archivo de imagen primero')
+  // Subir varias imágenes a la vez para una propiedad ya existente (desde el modal)
+  const handleAgregarImagenes = async () => {
+    if (archivosImagen.length === 0) {
+      setError('Selecciona al menos un archivo de imagen')
       return
     }
     setSubiendoImagen(true)
     setError(null)
     try {
-      const formData = new FormData()
-      formData.append('imagen', archivoImagen)
-      formData.append('id_propiedad', propiedadSeleccionada.id_propiedad)
-      formData.append('es_portada', esPortada)
+      // Solo la primera imagen del lote respeta el checkbox "usar como portada",
+      // para no terminar con varias portadas marcadas al mismo tiempo.
+      await Promise.all(
+        archivosImagen.map((file, index) => {
+          const formData = new FormData()
+          formData.append('imagen', file)
+          formData.append('id_propiedad', propiedadSeleccionada.id_propiedad)
+          formData.append('es_portada', index === 0 ? esPortada : false)
+          return uploadImagen(formData)
+        })
+      )
 
-      await uploadImagen(formData)
-
-      setArchivoImagen(null)
+      setArchivosImagen([])
       setEsPortada(false)
       cargarImagenes(propiedadSeleccionada.id_propiedad)
     } catch {
-      setError('Error al subir la imagen')
+      setError('Error al subir una o más imágenes')
     } finally {
       setSubiendoImagen(false)
     }
@@ -111,28 +113,41 @@ function PanelAdmin() {
     }
   }
 
-  // --- Imágenes dentro del formulario de "Nueva propiedad" ---
-  const handleSeleccionarImagenNueva = (e) => {
-    const file = e.target.files[0]
-    if (file) setArchivoImagenNueva(file)
+  const handleMarcarPortada = async (id_imagen) => {
+    try {
+      await setImagenPortada(id_imagen)
+      cargarImagenes(propiedadSeleccionada.id_propiedad)
+    } catch {
+      setError('Error al marcar la imagen como portada')
+    }
   }
 
-  const handleAgregarImagenNueva = () => {
-    if (!archivoImagenNueva) return
-    setImagenesNuevas([
-      ...imagenesNuevas,
-      {
-        file: archivoImagenNueva,
-        previewUrl: URL.createObjectURL(archivoImagenNueva),
-        es_portada: esPortadaNueva
-      }
-    ])
-    setArchivoImagenNueva(null)
-    setEsPortadaNueva(false)
+  // --- Imágenes dentro del formulario de "Nueva propiedad" ---
+  const handleSeleccionarImagenesNuevas = (e) => {
+    const files = Array.from(e.target.files)
+    if (files.length === 0) return
+
+    const nuevas = files.map((file, index) => ({
+      file,
+      previewUrl: URL.createObjectURL(file),
+      // Si aún no hay ninguna imagen marcada como portada, la primera del lote lo será
+      es_portada: imagenesNuevas.length === 0 && index === 0
+    }))
+
+    setImagenesNuevas([...imagenesNuevas, ...nuevas])
+    e.target.value = '' // permite volver a seleccionar el mismo archivo si se necesita
   }
 
   const handleQuitarImagenNueva = (index) => {
+    URL.revokeObjectURL(imagenesNuevas[index].previewUrl)
     setImagenesNuevas(imagenesNuevas.filter((_, i) => i !== index))
+  }
+
+  const handleMarcarPortadaNueva = (index) => {
+    setImagenesNuevas(imagenesNuevas.map((img, i) => ({
+      ...img,
+      es_portada: i === index
+    })))
   }
 
   useEffect(() => {
@@ -163,10 +178,8 @@ function PanelAdmin() {
         id_ubicacion:     parseInt(form.id_ubicacion)
       })
 
-      const nuevaPropiedad = res.data
-      const idNuevaPropiedad = nuevaPropiedad.id_propiedad
+      const idNuevaPropiedad = res.data.id_propiedad
 
-      // Subir cada imagen seleccionada, ya con el id_propiedad real
       if (imagenesNuevas.length > 0) {
         await Promise.all(
           imagenesNuevas.map(img => {
@@ -322,34 +335,31 @@ function PanelAdmin() {
             <div style={styles.agregarImagen}>
               <h4 style={{ margin: '0 0 1rem 0', color: '#1a1a2e' }}>Imágenes de la propiedad</h4>
               <div style={styles.campo}>
-                <label style={styles.label}>Selecciona una foto (PC o móvil)</label>
+                <label style={styles.label}>Selecciona una o varias fotos (PC o móvil)</label>
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={handleSeleccionarImagenNueva}
+                  multiple
+                  onChange={handleSeleccionarImagenesNuevas}
                   style={styles.input}
                 />
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.5rem 0' }}>
-                <input
-                  type="checkbox"
-                  id="esPortadaNueva"
-                  checked={esPortadaNueva}
-                  onChange={(e) => setEsPortadaNueva(e.target.checked)}
-                />
-                <label htmlFor="esPortadaNueva" style={styles.label}>Usar como portada</label>
-              </div>
-              <button type="button" onClick={handleAgregarImagenNueva} style={styles.botonImagenes}>
-                + Agregar imagen a la lista
-              </button>
 
               {imagenesNuevas.length > 0 && (
                 <div style={styles.gridImagenes}>
                   {imagenesNuevas.map((img, index) => (
                     <div key={index} style={styles.imagenCard}>
                       <img src={img.previewUrl} alt="Nueva propiedad" style={styles.imagen} />
-                      {img.es_portada && (
+                      {img.es_portada ? (
                         <span style={styles.badgePortada}>⭐ Portada</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleMarcarPortadaNueva(index)}
+                          style={styles.botonImagenes}
+                        >
+                          Usar como portada
+                        </button>
                       )}
                       <button
                         type="button"
@@ -429,7 +439,7 @@ function PanelAdmin() {
                   🖼️ Imágenes — {propiedadSeleccionada.titulo}
                 </h3>
                 <button
-                  onClick={() => { setMostrarImagenes(false); setPropiedadSeleccionada(null); setImagenes([]) }}
+                  onClick={() => { setMostrarImagenes(false); setPropiedadSeleccionada(null); setImagenes([]); setArchivosImagen([]) }}
                   style={styles.botonCerrar}
                 >
                   ✕
@@ -438,16 +448,22 @@ function PanelAdmin() {
 
               {/* Agregar imagen */}
               <div style={styles.agregarImagen}>
-                <h4 style={{ margin: '0 0 1rem 0', color: '#1a1a2e' }}>Agregar imagen</h4>
+                <h4 style={{ margin: '0 0 1rem 0', color: '#1a1a2e' }}>Agregar imágenes</h4>
                 <div style={styles.campo}>
-                  <label style={styles.label}>Selecciona una foto (PC o móvil) *</label>
+                  <label style={styles.label}>Selecciona una o varias fotos (PC o móvil) *</label>
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => setArchivoImagen(e.target.files[0] || null)}
+                    multiple
+                    onChange={(e) => setArchivosImagen(Array.from(e.target.files))}
                     style={styles.input}
                   />
                 </div>
+                {archivosImagen.length > 0 && (
+                  <p style={{ fontSize: '0.85rem', color: '#555' }}>
+                    {archivosImagen.length} archivo(s) seleccionado(s)
+                  </p>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.5rem 0' }}>
                   <input
                     type="checkbox"
@@ -455,10 +471,12 @@ function PanelAdmin() {
                     checked={esPortada}
                     onChange={(e) => setEsPortada(e.target.checked)}
                   />
-                  <label htmlFor="esPortada" style={styles.label}>Usar como portada</label>
+                  <label htmlFor="esPortada" style={styles.label}>
+                    Usar la primera imagen del lote como portada
+                  </label>
                 </div>
-                <button onClick={handleAgregarImagen} style={styles.botonGuardar} disabled={subiendoImagen}>
-                  {subiendoImagen ? 'Subiendo...' : 'Agregar imagen'}
+                <button onClick={handleAgregarImagenes} style={styles.botonGuardar} disabled={subiendoImagen}>
+                  {subiendoImagen ? 'Subiendo...' : 'Agregar imágenes'}
                 </button>
               </div>
 
@@ -476,8 +494,15 @@ function PanelAdmin() {
                           style={styles.imagen}
                           onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=Sin+imagen' }}
                         />
-                        {img.es_portada && (
+                        {img.es_portada ? (
                           <span style={styles.badgePortada}>⭐ Portada</span>
+                        ) : (
+                          <button
+                            onClick={() => handleMarcarPortada(img.id_imagen)}
+                            style={styles.botonImagenes}
+                          >
+                            Usar como portada
+                          </button>
                         )}
                         <button
                           onClick={() => handleEliminarImagen(img.id_imagen)}
@@ -714,7 +739,9 @@ const styles = {
       overflow: 'hidden',
       border: '1px solid #eee',
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
+      gap: '0.3rem',
+      padding: '0 0 0.3rem 0'
     },
     imagen: {
       width: '100%',
