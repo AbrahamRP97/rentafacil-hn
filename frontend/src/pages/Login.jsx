@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState(null)
+  const [cargando, setCargando] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
 
@@ -12,25 +13,25 @@ function Login() {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
 
-    // Validación básica
     if (!form.email || !form.password) {
       setError('Por favor completa todos los campos')
       return
     }
 
-    if (form.email === 'admin@rentafacil.com' && form.password === '1234') {
-      login({ email: form.email, rol: 'anfitrion', nombre: 'Administrador' })
-      navigate('/admin')
-    } else if (form.email === 'usuario@rentafacil.com' && form.password === '1234') {
-      login({ email: form.email, rol: 'inquilino', nombre: 'Usuario' })
-      navigate('/')
-    } else {
+    setCargando(true)
+    const { error: errorLogin } = await login(form.email, form.password)
+    setCargando(false)
+
+    if (errorLogin) {
       setError('Correo o contraseña incorrectos')
+      return
     }
+
+    navigate('/')
   }
 
   return (
@@ -66,8 +67,8 @@ function Login() {
             />
           </div>
 
-          <button onClick={handleSubmit} style={styles.boton}>
-            Iniciar Sesión
+          <button onClick={handleSubmit} style={styles.boton} disabled={cargando}>
+            {cargando ? 'Ingresando...' : 'Iniciar Sesión'}
           </button>
         </div>
 
@@ -75,13 +76,7 @@ function Login() {
               ¿No tienes cuenta?{' '}
                 <Link to="/registro" style={styles.link}>Regístrate aquí</Link>
         </p>
-
-        <div style={styles.ayuda}>
-            <p style={styles.ayudaTexto}>Credenciales de prueba:</p>
-            <p style={styles.ayudaTexto}>Anfitrión: admin@rentafacil.com / 1234</p>
-            <p style={styles.ayudaTexto}>Inquilino: usuario@rentafacil.com / 1234</p>
-            </div>
-        </div>
+      </div>
     </div>
   )
 }
@@ -155,17 +150,6 @@ const styles = {
     fontWeight: 'bold',
     cursor: 'pointer',
     marginTop: '0.5rem'
-  },
-  ayuda: {
-    marginTop: '1.5rem',
-    padding: '1rem',
-    backgroundColor: '#f5f5f5',
-    borderRadius: '4px'
-  },
-  ayudaTexto: {
-    fontSize: '0.8rem',
-    color: '#888',
-    margin: '0.2rem 0'
   },
   registroLink: {
   textAlign: 'center',

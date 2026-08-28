@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 function Registro() {
   const [form, setForm] = useState({
@@ -13,13 +14,15 @@ function Registro() {
   })
   const [error, setError] = useState(null)
   const [exito, setExito] = useState(false)
+  const [cargando, setCargando] = useState(false)
+  const { registrar } = useAuth()
   const navigate = useNavigate()
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
 
@@ -38,7 +41,24 @@ function Registro() {
       return
     }
 
-    // Simulación temporal hasta conectar Supabase
+    setCargando(true)
+    const { error: errorRegistro } = await registrar({
+      email: form.email,
+      password: form.password,
+      nombre: form.nombre,
+      apellido: form.apellido,
+      telefono: form.telefono,
+      rol: form.rol
+    })
+    setCargando(false)
+
+    if (errorRegistro) {
+      setError(errorRegistro.includes('already registered')
+        ? 'Ya existe una cuenta con este correo'
+        : 'Error al crear la cuenta: ' + errorRegistro)
+      return
+    }
+
     setExito(true)
     setTimeout(() => navigate('/login'), 2000)
   }
@@ -143,8 +163,8 @@ function Registro() {
             />
           </div>
 
-          <button onClick={handleSubmit} style={styles.boton}>
-            Crear cuenta
+          <button onClick={handleSubmit} style={styles.boton} disabled={cargando}>
+            {cargando ? 'Creando cuenta...' : 'Crear cuenta'}
           </button>
 
           <p style={styles.loginLink}>
