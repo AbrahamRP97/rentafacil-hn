@@ -9,6 +9,17 @@ router.get('/', async (req, res) => {
   res.json(data)
 })
 
+// IMPORTANTE: esta ruta va antes de '/:id' por la misma razón que en propietarios.js
+router.get('/auth/:auth_user_id', async (req, res) => {
+  const { data, error } = await supabase
+    .from('inquilinos')
+    .select('*')
+    .eq('auth_user_id', req.params.auth_user_id)
+    .single()
+  if (error) return res.status(404).json({ error: 'Inquilino no encontrado para este usuario' })
+  res.json(data)
+})
+
 router.get('/:id', async (req, res) => {
   const { data, error } = await supabase
     .from('inquilinos')

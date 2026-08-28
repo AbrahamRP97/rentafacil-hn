@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import { getPropiedades, getPropietarios, getInquilinos, getContratos, getPagos, createPropiedad,
-  getImagenes, uploadImagen, deleteImagen, setImagenPortada } from '../services/api'
+  getImagenes, uploadImagen, deleteImagen, setImagenPortada, getPropietarioPorAuth } from '../services/api'
 
 function PanelAdmin() {
+  const { usuario } = useAuth()
+
+  const [propietarioActual, setPropietarioActual] = useState(null)
+  const [cargandoPropietario, setCargandoPropietario] = useState(true)
+
   const [stats, setStats] = useState({
     propiedades: 0,
     propietarios: 0,
@@ -12,11 +18,12 @@ function PanelAdmin() {
     pagos: 0
   })
   const [propiedades, setPropiedades] = useState([])
+  const [propiedadesPropias, setPropiedadesPropias] = useState([])
   const [loading, setLoading] = useState(true)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [imagenes, setImagenes] = useState([])
   const [propiedadSeleccionada, setPropiedadSeleccionada] = useState(null)
-  const [archivosImagen, setArchivosImagen] = useState([]) // varios archivos a la vez
+  const [archivosImagen, setArchivosImagen] = useState([])
   const [esPortada, setEsPortada] = useState(false)
   const [mostrarImagenes, setMostrarImagenes] = useState(false)
   const [subiendoImagen, setSubiendoImagen] = useState(false)
@@ -31,12 +38,23 @@ function PanelAdmin() {
     metros_cuadrados: '',
     tipo: 'apartamento',
     estado: 'disponible',
-    id_propietario: '',
     id_ubicacion: ''
   })
 
-  // Imágenes seleccionadas en el formulario de "Nueva propiedad", aún no subidas
-  const [imagenesNuevas, setImagenesNuevas] = useState([]) // [{ file, previewUrl, es_portada }]
+  const [imagenesNuevas, setImagenesNuevas] = useState([])
+
+  useEffect(() => {
+    if (!usuario) return
+    getPropietarioPorAuth(usuario.id)
+      .then(res => {
+        setPropietarioActual(res.data)
+        setCargandoPropietario(false)
+      })
+      .catch(() => {
+        setPropietarioActual(null)
+        setCargandoPropietario(false)
+      })
+  }, [usuario])
 
   const cargarDatos = () => {
     Promise.all([
@@ -58,6 +76,16 @@ function PanelAdmin() {
     }).catch(() => setLoading(false))
   }
 
+  useEffect(() => {
+    if (propietarioActual) {
+      setPropiedadesPropias(
+        propiedades.filter(p => p.id_propietario === propietarioActual.id_propietario)
+      )
+    } else {
+      setPropiedadesPropias([])
+    }
+  }, [propiedades, propietarioActual])
+
   const cargarImagenes = async (id_propiedad) => {
     try {
       const res = await getImagenes(id_propiedad)
@@ -73,7 +101,6 @@ function PanelAdmin() {
     cargarImagenes(propiedad.id_propiedad)
   }
 
-  // Subir varias imágenes a la vez para una propiedad ya existente (desde el modal)
   const handleAgregarImagenes = async () => {
     if (archivosImagen.length === 0) {
       setError('Selecciona al menos un archivo de imagen')
@@ -82,8 +109,6 @@ function PanelAdmin() {
     setSubiendoImagen(true)
     setError(null)
     try {
-      // Solo la primera imagen del lote respeta el checkbox "usar como portada",
-      // para no terminar con varias portadas marcadas al mismo tiempo.
       await Promise.all(
         archivosImagen.map((file, index) => {
           const formData = new FormData()
@@ -93,7 +118,6 @@ function PanelAdmin() {
           return uploadImagen(formData)
         })
       )
-
       setArchivosImagen([])
       setEsPortada(false)
       cargarImagenes(propiedadSeleccionada.id_propiedad)
@@ -122,7 +146,6 @@ function PanelAdmin() {
     }
   }
 
-  // --- Imágenes dentro del formulario de "Nueva propiedad" ---
   const handleSeleccionarImagenesNuevas = (e) => {
     const files = Array.from(e.target.files)
     if (files.length === 0) return
@@ -130,12 +153,11 @@ function PanelAdmin() {
     const nuevas = files.map((file, index) => ({
       file,
       previewUrl: URL.createObjectURL(file),
-      // Si aún no hay ninguna imagen marcada como portada, la primera del lote lo será
       es_portada: imagenesNuevas.length === 0 && index === 0
     }))
 
     setImagenesNuevas([...imagenesNuevas, ...nuevas])
-    e.target.value = '' // permite volver a seleccionar el mismo archivo si se necesita
+    e.target.value = ''
   }
 
   const handleQuitarImagenNueva = (index) => {
@@ -162,7 +184,12 @@ function PanelAdmin() {
     e.preventDefault()
     setError(null)
 
-    if (!form.titulo || !form.precio_mensual || !form.id_propietario || !form.id_ubicacion) {
+    if (!propietarioActual) {
+      setError('No se pudo identificar tu perfil de propietario. Intenta cerrar sesión y volver a entrar.')
+      return
+    }
+
+    if (!form.titulo || !form.precio_mensual || !form.id_ubicacion) {
       setError('Por favor completa todos los campos obligatorios')
       return
     }
@@ -174,7 +201,7 @@ function PanelAdmin() {
         habitaciones:     parseInt(form.habitaciones),
         banos:            parseInt(form.banos),
         metros_cuadrados: parseFloat(form.metros_cuadrados),
-        id_propietario:   parseInt(form.id_propietario),
+        id_propietario:   propietarioActual.id_propietario,
         id_ubicacion:     parseInt(form.id_ubicacion)
       })
 
@@ -198,7 +225,7 @@ function PanelAdmin() {
         titulo: '', descripcion: '', precio_mensual: '',
         habitaciones: '', banos: '', metros_cuadrados: '',
         tipo: 'apartamento', estado: 'disponible',
-        id_propietario: '', id_ubicacion: ''
+        id_ubicacion: ''
       })
       imagenesNuevas.forEach(img => URL.revokeObjectURL(img.previewUrl))
       setImagenesNuevas([])
@@ -209,19 +236,28 @@ function PanelAdmin() {
     }
   }
 
-  if (loading) return <p style={styles.mensaje}>Cargando panel...</p>
+  if (loading || cargandoPropietario) return <p style={styles.mensaje}>Cargando panel...</p>
 
   return (
     <div style={styles.container}>
       <h2 style={styles.titulo}>Panel de Administración</h2>
-      <p style={styles.subtitulo}>Bienvenido, anfitrión. Aquí puedes gestionar todo tu sistema.</p>
+      <p style={styles.subtitulo}>
+        Bienvenido, {propietarioActual ? `${propietarioActual.nombre} ${propietarioActual.apellido}` : 'anfitrión'}.
+        Aquí puedes gestionar tus propiedades.
+      </p>
 
-      {/* Estadísticas */}
+      {!propietarioActual && (
+        <p style={styles.error}>
+          No encontramos un perfil de propietario asociado a tu cuenta. Si acabas de registrarte,
+          intenta cerrar sesión y volver a entrar. Si el problema persiste, contacta soporte.
+        </p>
+      )}
+
       <div style={styles.statsGrid}>
         <div style={styles.statCard}>
           <span style={styles.statIcono}>🏠</span>
-          <span style={styles.statNumero}>{stats.propiedades}</span>
-          <span style={styles.statLabel}>Propiedades</span>
+          <span style={styles.statNumero}>{propiedadesPropias.length}</span>
+          <span style={styles.statLabel}>Mis propiedades</span>
         </div>
         <div style={styles.statCard}>
           <span style={styles.statIcono}>👤</span>
@@ -245,26 +281,24 @@ function PanelAdmin() {
         </div>
       </div>
 
-      {/* Mensajes */}
       {exito && <p style={styles.exito}>✅ Propiedad creada exitosamente</p>}
       {error && <p style={styles.error}>{error}</p>}
 
-      {/* Botón agregar propiedad */}
       <div style={styles.seccion}>
         <div style={styles.seccionHeader}>
-          <h3 style={styles.seccionTitulo}>Propiedades registradas</h3>
+          <h3 style={styles.seccionTitulo}>Mis propiedades</h3>
           <Link to="/admin/consultas-avanzadas" style={styles.botonConsulta}>
             Consultas avanzadas
           </Link>
           <button
             onClick={() => { setMostrarFormulario(!mostrarFormulario); setError(null) }}
             style={styles.botonAgregar}
+            disabled={!propietarioActual}
           >
             {mostrarFormulario ? '✕ Cancelar' : '+ Agregar propiedad'}
           </button>
         </div>
 
-        {/* Formulario */}
         {mostrarFormulario && (
           <div style={styles.formulario}>
             <h4 style={styles.formTitulo}>Nueva propiedad</h4>
@@ -320,18 +354,11 @@ function PanelAdmin() {
               </div>
             </div>
 
-            <div style={styles.fila}>
-              <div style={styles.campo}>
-                <label style={styles.label}>ID Propietario *</label>
-                <input type="number" name="id_propietario" value={form.id_propietario} onChange={handleChange} placeholder="1" style={styles.input} />
-              </div>
-              <div style={styles.campo}>
-                <label style={styles.label}>ID Ubicación *</label>
-                <input type="number" name="id_ubicacion" value={form.id_ubicacion} onChange={handleChange} placeholder="1" style={styles.input} />
-              </div>
+            <div style={styles.campo}>
+              <label style={styles.label}>ID Ubicación *</label>
+              <input type="number" name="id_ubicacion" value={form.id_ubicacion} onChange={handleChange} placeholder="1" style={styles.input} />
             </div>
 
-            {/* Imágenes de la nueva propiedad */}
             <div style={styles.agregarImagen}>
               <h4 style={{ margin: '0 0 1rem 0', color: '#1a1a2e' }}>Imágenes de la propiedad</h4>
               <div style={styles.campo}>
@@ -380,9 +407,8 @@ function PanelAdmin() {
           </div>
         )}
 
-        {/* Tabla */}
-        {propiedades.length === 0 ? (
-          <p style={styles.mensaje}>No hay propiedades registradas aún.</p>
+        {propiedadesPropias.length === 0 ? (
+          <p style={styles.mensaje}>Todavía no has registrado ninguna propiedad.</p>
         ) : (
           <table style={styles.tabla}>
             <thead>
@@ -398,7 +424,7 @@ function PanelAdmin() {
               </tr>
             </thead>
             <tbody>
-              {propiedades.map(p => (
+              {propiedadesPropias.map(p => (
                 <tr key={p.id_propiedad} style={styles.tr}>
                   <td style={styles.td}>{p.id_propiedad}</td>
                   <td style={styles.td}>{p.titulo}</td>
@@ -430,7 +456,6 @@ function PanelAdmin() {
           </table>
         )}
       </div>
-      {/* Modal de imágenes */}
         {mostrarImagenes && propiedadSeleccionada && (
           <div style={styles.modalOverlay}>
             <div style={styles.modal}>
@@ -446,7 +471,6 @@ function PanelAdmin() {
                 </button>
               </div>
 
-              {/* Agregar imagen */}
               <div style={styles.agregarImagen}>
                 <h4 style={{ margin: '0 0 1rem 0', color: '#1a1a2e' }}>Agregar imágenes</h4>
                 <div style={styles.campo}>
@@ -480,7 +504,6 @@ function PanelAdmin() {
                 </button>
               </div>
 
-              {/* Lista de imágenes */}
               <div style={styles.listaImagenes}>
                 {imagenes.length === 0 ? (
                   <p style={styles.mensaje}>No hay imágenes registradas para esta propiedad.</p>

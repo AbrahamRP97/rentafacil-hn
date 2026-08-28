@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { createPropietario, createInquilino } from '../services/api'
 
 function Registro() {
   const [form, setForm] = useState({
@@ -8,6 +9,7 @@ function Registro() {
     apellido: '',
     email: '',
     telefono: '',
+    dni: '',
     password: '',
     confirmarPassword: '',
     rol: 'inquilino'
@@ -26,7 +28,7 @@ function Registro() {
     e.preventDefault()
     setError(null)
 
-    if (!form.nombre || !form.apellido || !form.email || !form.password || !form.confirmarPassword) {
+    if (!form.nombre || !form.apellido || !form.email || !form.dni || !form.password || !form.confirmarPassword) {
       setError('Por favor completa todos los campos obligatorios')
       return
     }
@@ -42,7 +44,9 @@ function Registro() {
     }
 
     setCargando(true)
-    const { error: errorRegistro } = await registrar({
+
+    // Paso 1: crear el usuario en Supabase Auth
+    const { error: errorRegistro, data } = await registrar({
       email: form.email,
       password: form.password,
       nombre: form.nombre,
@@ -50,15 +54,38 @@ function Registro() {
       telefono: form.telefono,
       rol: form.rol
     })
-    setCargando(false)
 
     if (errorRegistro) {
+      setCargando(false)
       setError(errorRegistro.includes('already registered')
         ? 'Ya existe una cuenta con este correo'
         : 'Error al crear la cuenta: ' + errorRegistro)
       return
     }
 
+    // Paso 2: crear el registro real en propietarios o inquilinos, ligado al usuario recién creado
+    try {
+      const datosPerfil = {
+        nombre: form.nombre,
+        apellido: form.apellido,
+        email: form.email,
+        telefono: form.telefono,
+        dni: form.dni,
+        auth_user_id: data.user.id
+      }
+
+      if (form.rol === 'anfitrion') {
+        await createPropietario(datosPerfil)
+      } else {
+        await createInquilino(datosPerfil)
+      }
+    } catch (err) {
+      setCargando(false)
+      setError('Tu cuenta se creó, pero hubo un error al guardar tu perfil. Contacta soporte o intenta iniciar sesión.')
+      return
+    }
+
+    setCargando(false)
     setExito(true)
     setTimeout(() => navigate('/login'), 2000)
   }
@@ -114,16 +141,29 @@ function Registro() {
             />
           </div>
 
-          <div style={styles.campo}>
-            <label style={styles.label}>Teléfono</label>
-            <input
-              type="text"
-              name="telefono"
-              value={form.telefono}
-              onChange={handleChange}
-              placeholder="9999-9999"
-              style={styles.input}
-            />
+          <div style={styles.fila}>
+            <div style={styles.campo}>
+              <label style={styles.label}>Teléfono</label>
+              <input
+                type="text"
+                name="telefono"
+                value={form.telefono}
+                onChange={handleChange}
+                placeholder="9999-9999"
+                style={styles.input}
+              />
+            </div>
+            <div style={styles.campo}>
+              <label style={styles.label}>DNI *</label>
+              <input
+                type="text"
+                name="dni"
+                value={form.dni}
+                onChange={handleChange}
+                placeholder="0801-1990-12345"
+                style={styles.input}
+              />
+            </div>
           </div>
 
           <div style={styles.campo}>
