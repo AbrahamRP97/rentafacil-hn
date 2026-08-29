@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getPropiedades, getReservas, getContratos, getPagos, createPropiedad,
   getImagenes, uploadImagen, deleteImagen, setImagenPortada, getPropietarioPorAuth,
-  aprobarReserva, updateReserva, enviarMensaje } from '../services/api'
+  aprobarReserva, updateReserva, enviarMensaje, cancelarContrato } from '../services/api'
 
 function PanelAdmin() {
   const { usuario } = useAuth()
@@ -100,6 +100,11 @@ function PanelAdmin() {
     const idsContratos = contratosDePropias.map(c => c.id_contrato)
     setPagosPropios(pagos.filter(pg => idsContratos.includes(pg.id_contrato)))
   }, [propiedades, reservas, contratos, pagos, propietarioActual])
+
+  const contratosConDetalle = contratosPropios.map(c => {
+    const reservaRelacionada = reservas.find(r => r.id_reserva === c.id_reserva)
+    return { ...c, reserva: reservaRelacionada }
+  })
 
   const cargarImagenes = async (id_propiedad) => {
     try {
@@ -240,6 +245,31 @@ function PanelAdmin() {
       cargarDatos()
     } catch (err) {
       setError('Error al rechazar la reserva. Intenta de nuevo.')
+    } finally {
+      setProcesandoReserva(null)
+    }
+  }
+
+  const handleCancelarContrato = async (id_contrato) => {
+    setProcesandoReserva(id_contrato)
+    setError(null)
+    try {
+      await cancelarContrato({ id_contrato })
+
+      const contrato = contratosConDetalle.find(c => c.id_contrato === id_contrato)
+      if (contrato?.reserva) {
+        await enviarMensaje({
+          id_propiedad: contrato.reserva.id_propiedad,
+          id_propietario: contrato.reserva.PROPIEDADES?.id_propietario,
+          id_inquilino: contrato.reserva.id_inquilino,
+          remitente: 'propietario',
+          contenido: `⚠️ El contrato de "${contrato.reserva.PROPIEDADES?.titulo}" fue cancelado por el propietario.`
+        }).catch(() => {})
+      }
+
+      cargarDatos()
+    } catch (err) {
+      setError('Error al cancelar el contrato. Intenta de nuevo.')
     } finally {
       setProcesandoReserva(null)
     }
@@ -393,6 +423,57 @@ function PanelAdmin() {
                         Rechazar
                       </button>
                     </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {contratosConDetalle.length > 0 && (
+        <div style={styles.seccion}>
+          <h3 style={styles.seccionTitulo}>Mis contratos</h3>
+          <table style={styles.tabla}>
+            <thead>
+              <tr>
+                <th style={styles.th}>Propiedad</th>
+                <th style={styles.th}>Inquilino</th>
+                <th style={styles.th}>Del</th>
+                <th style={styles.th}>Al</th>
+                <th style={styles.th}>Monto/mes</th>
+                <th style={styles.th}>Depósito</th>
+                <th style={styles.th}>Estado</th>
+                <th style={styles.th}>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              {contratosConDetalle.map(c => (
+                <tr key={c.id_contrato} style={styles.tr}>
+                  <td style={styles.td}>{c.reserva?.PROPIEDADES?.titulo}</td>
+                  <td style={styles.td}>{c.reserva?.INQUILINOS?.nombre} {c.reserva?.INQUILINOS?.apellido}</td>
+                  <td style={styles.td}>{c.fecha_inicio}</td>
+                  <td style={styles.td}>{c.fecha_fin}</td>
+                  <td style={styles.td}>L. {c.monto_mensual}</td>
+                  <td style={styles.td}>L. {c.deposito}</td>
+                  <td style={styles.td}>
+                    <span style={{
+                      ...styles.badge,
+                      backgroundColor: c.estado === 'activo' ? '#28a745' : c.estado === 'cancelado' ? '#e94560' : '#ffc107'
+                    }}>
+                      {c.estado}
+                    </span>
+                  </td>
+                  <td style={styles.td}>
+                    {c.estado === 'activo' && (
+                      <button
+                        onClick={() => handleCancelarContrato(c.id_contrato)}
+                        style={styles.botonRechazar}
+                        disabled={procesandoReserva === c.id_contrato}
+                      >
+                        {procesandoReserva === c.id_contrato ? '...' : 'Cancelar'}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
