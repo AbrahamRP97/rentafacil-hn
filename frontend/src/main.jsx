@@ -12,6 +12,7 @@ import PanelAdmin from './pages/PanelAdmin'
 import ConsultasAvanzadas from './pages/ConsultasAvanzadas'
 import Mensajes from './pages/Mensajes'
 import ChatConversacion from './pages/ChatConversacion'
+import MisReservas from './pages/MisReservas'
 import RutaProtegida from './components/RutaProtegida'
 import './index.css'
 
@@ -44,6 +45,11 @@ createRoot(document.getElementById('root')).render(
           <Route path="/mensajes/:id_propiedad/:id_otro" element={
             <RutaProtegida>
               <ChatConversacion />
+            </RutaProtegida>
+          } />
+          <Route path="/mis-reservas" element={
+            <RutaProtegida rol="inquilino">
+              <MisReservas />
             </RutaProtegida>
           } />
         </Routes>
