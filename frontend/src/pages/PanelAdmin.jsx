@@ -360,8 +360,8 @@ function PanelAdmin() {
         </div>
         <div style={styles.statCard}>
           <span style={styles.statIcono}>📄</span>
-          <span style={styles.statNumero}>{contratosPropios.length}</span>
-          <span style={styles.statLabel}>Mis contratos</span>
+          <span style={styles.statNumero}>{contratosConDetalle.filter(c => c.estado === 'activo').length}</span>
+          <span style={styles.statLabel}>Mis contratos activos</span>
         </div>
         <div style={styles.statCard}>
           <span style={styles.statIcono}>💰</span>
