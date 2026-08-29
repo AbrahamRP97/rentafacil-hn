@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getPropiedades, getReservas, getContratos, getPagos, createPropiedad,
   getImagenes, uploadImagen, deleteImagen, setImagenPortada, getPropietarioPorAuth,
-  aprobarReserva, updateReserva } from '../services/api'
+  aprobarReserva, updateReserva, enviarMensaje } from '../services/api'
 
 function PanelAdmin() {
   const { usuario } = useAuth()
@@ -200,6 +200,18 @@ function PanelAdmin() {
         id_reserva,
         deposito: deposito ? parseFloat(deposito) : null
       })
+
+      const reserva = reservasPendientes.find(r => r.id_reserva === id_reserva)
+      if (reserva) {
+        await enviarMensaje({
+          id_propiedad: reserva.id_propiedad,
+          id_propietario: reserva.PROPIEDADES?.id_propietario,
+          id_inquilino: reserva.id_inquilino,
+          remitente: 'propietario',
+          contenido: `✅ Tu solicitud de reserva para "${reserva.PROPIEDADES?.titulo}" (${reserva.fecha_inicio} al ${reserva.fecha_fin}) fue aprobada.`
+        }).catch(() => {})
+      }
+
       cargarDatos()
     } catch (err) {
       setError('Error al aprobar la reserva. Verifica el depósito o intenta de nuevo.')
@@ -213,6 +225,18 @@ function PanelAdmin() {
     setError(null)
     try {
       await updateReserva(id_reserva, { estado: 'rechazada' })
+
+      const reserva = reservasPendientes.find(r => r.id_reserva === id_reserva)
+      if (reserva) {
+        await enviarMensaje({
+          id_propiedad: reserva.id_propiedad,
+          id_propietario: reserva.PROPIEDADES?.id_propietario,
+          id_inquilino: reserva.id_inquilino,
+          remitente: 'propietario',
+          contenido: `❌ Tu solicitud de reserva para "${reserva.PROPIEDADES?.titulo}" (${reserva.fecha_inicio} al ${reserva.fecha_fin}) fue rechazada.`
+        }).catch(() => {})
+      }
+
       cargarDatos()
     } catch (err) {
       setError('Error al rechazar la reserva. Intenta de nuevo.')
