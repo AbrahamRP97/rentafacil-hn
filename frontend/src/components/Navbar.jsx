@@ -76,7 +76,10 @@ function Navbar() {
         )}
 
         {usuario && usuario.rol === 'inquilino' && (
-          <button onClick={handleLogout} style={styles.botonCerrarSesion}>Cerrar Sesión</button>
+          <>
+            <Link to="/mis-reservas" style={styles.link}>Mis reservas</Link>
+            <button onClick={handleLogout} style={styles.botonCerrarSesion}>Cerrar Sesión</button>
+          </>
         )}
       </div>
     </nav>
