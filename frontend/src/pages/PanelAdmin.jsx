@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getPropiedades, getReservas, getContratos, getPagos, createPropiedad,
-  getImagenes, uploadImagen, deleteImagen, setImagenPortada, getPropietarioPorAuth } from '../services/api'
+  getImagenes, uploadImagen, deleteImagen, setImagenPortada, getPropietarioPorAuth,
+  aprobarReserva, updateReserva } from '../services/api'
 
 function PanelAdmin() {
   const { usuario } = useAuth()
@@ -16,8 +17,11 @@ function PanelAdmin() {
   const [pagos, setPagos] = useState([])
 
   const [propiedadesPropias, setPropiedadesPropias] = useState([])
+  const [reservasPendientes, setReservasPendientes] = useState([])
   const [contratosPropios, setContratosPropios] = useState([])
   const [pagosPropios, setPagosPropios] = useState([])
+  const [depositoPorReserva, setDepositoPorReserva] = useState({})
+  const [procesandoReserva, setProcesandoReserva] = useState(null)
 
   const [loading, setLoading] = useState(true)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
@@ -86,6 +90,8 @@ function PanelAdmin() {
 
     const idsPropiedades = propias.map(p => p.id_propiedad)
     const reservasPropias = reservas.filter(r => idsPropiedades.includes(r.id_propiedad))
+
+    setReservasPendientes(reservasPropias.filter(r => r.estado === 'pendiente'))
 
     const idsReservas = reservasPropias.map(r => r.id_reserva)
     const contratosDePropias = contratos.filter(c => idsReservas.includes(c.id_reserva))
@@ -185,6 +191,36 @@ function PanelAdmin() {
     cargarDatos()
   }, [])
 
+  const handleAprobarReserva = async (id_reserva) => {
+    setProcesandoReserva(id_reserva)
+    setError(null)
+    try {
+      const deposito = depositoPorReserva[id_reserva]
+      await aprobarReserva({
+        id_reserva,
+        deposito: deposito ? parseFloat(deposito) : null
+      })
+      cargarDatos()
+    } catch (err) {
+      setError('Error al aprobar la reserva. Verifica el depósito o intenta de nuevo.')
+    } finally {
+      setProcesandoReserva(null)
+    }
+  }
+
+  const handleRechazarReserva = async (id_reserva) => {
+    setProcesandoReserva(id_reserva)
+    setError(null)
+    try {
+      await updateReserva(id_reserva, { estado: 'rechazada' })
+      cargarDatos()
+    } catch (err) {
+      setError('Error al rechazar la reserva. Intenta de nuevo.')
+    } finally {
+      setProcesandoReserva(null)
+    }
+  }
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
@@ -282,6 +318,64 @@ function PanelAdmin() {
 
       {exito && <p style={styles.exito}>✅ Propiedad creada exitosamente</p>}
       {error && <p style={styles.error}>{error}</p>}
+
+      {reservasPendientes.length > 0 && (
+        <div style={styles.seccion}>
+          <h3 style={styles.seccionTitulo}>Solicitudes de reserva pendientes</h3>
+          <table style={styles.tabla}>
+            <thead>
+              <tr>
+                <th style={styles.th}>Propiedad</th>
+                <th style={styles.th}>Inquilino</th>
+                <th style={styles.th}>Del</th>
+                <th style={styles.th}>Al</th>
+                <th style={styles.th}>Depósito (L.)</th>
+                <th style={styles.th}>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reservasPendientes.map(r => (
+                <tr key={r.id_reserva} style={styles.tr}>
+                  <td style={styles.td}>{r.PROPIEDADES?.titulo}</td>
+                  <td style={styles.td}>{r.INQUILINOS?.nombre} {r.INQUILINOS?.apellido}</td>
+                  <td style={styles.td}>{r.fecha_inicio}</td>
+                  <td style={styles.td}>{r.fecha_fin}</td>
+                  <td style={styles.td}>
+                    <input
+                      type="number"
+                      placeholder="Opcional"
+                      value={depositoPorReserva[r.id_reserva] || ''}
+                      onChange={(e) => setDepositoPorReserva({
+                        ...depositoPorReserva,
+                        [r.id_reserva]: e.target.value
+                      })}
+                      style={styles.inputDeposito}
+                    />
+                  </td>
+                  <td style={styles.td}>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        onClick={() => handleAprobarReserva(r.id_reserva)}
+                        style={styles.botonAprobar}
+                        disabled={procesandoReserva === r.id_reserva}
+                      >
+                        {procesandoReserva === r.id_reserva ? '...' : 'Aprobar'}
+                      </button>
+                      <button
+                        onClick={() => handleRechazarReserva(r.id_reserva)}
+                        style={styles.botonRechazar}
+                        disabled={procesandoReserva === r.id_reserva}
+                      >
+                        Rechazar
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div style={styles.seccion}>
         <div style={styles.seccionHeader}>
@@ -695,6 +789,33 @@ const styles = {
     fontSize: '0.9rem'
   },
   mensaje: { textAlign: 'center', color: '#888', padding: '2rem' },
+    inputDeposito: {
+      width: '100px',
+      padding: '0.4rem 0.6rem',
+      borderRadius: '4px',
+      border: '1px solid #ddd',
+      fontSize: '0.85rem'
+    },
+    botonAprobar: {
+      padding: '0.4rem 0.8rem',
+      backgroundColor: '#28a745',
+      color: 'white',
+      border: 'none',
+      borderRadius: '4px',
+      cursor: 'pointer',
+      fontSize: '0.8rem',
+      fontWeight: 'bold'
+    },
+    botonRechazar: {
+      padding: '0.4rem 0.8rem',
+      backgroundColor: '#e94560',
+      color: 'white',
+      border: 'none',
+      borderRadius: '4px',
+      cursor: 'pointer',
+      fontSize: '0.8rem',
+      fontWeight: 'bold'
+    },
     botonImagenes: {
       padding: '0.4rem 0.8rem',
       backgroundColor: '#1a1a2e',
