@@ -11,10 +11,12 @@ export const updatePropiedad = (id, data) => api.put(`/propiedades/${id}`, data)
 export const deletePropiedad = (id) => api.delete(`/propiedades/${id}`)
 
 export const getPropietarios = () => api.get('/propietarios')
+export const getPropietario = (id) => api.get(`/propietarios/${id}`)
 export const createPropietario = (data) => api.post('/propietarios', data)
 export const getPropietarioPorAuth = (auth_user_id) => api.get(`/propietarios/auth/${auth_user_id}`)
 
 export const getInquilinos = () => api.get('/inquilinos')
+export const getInquilino = (id) => api.get(`/inquilinos/${id}`)
 export const createInquilino = (data) => api.post('/inquilinos', data)
 export const getInquilinoPorAuth = (auth_user_id) => api.get(`/inquilinos/auth/${auth_user_id}`)
 
@@ -38,5 +40,15 @@ export const getConsultasAvanzadas = () => api.get('/consultas-avanzadas')
 export const runConsultaAvanzada = (id) => api.get(`/consultas-avanzadas/${id}`)
 export const aprobarReserva = (data) => api.post('/transacciones/aprobar-reserva', data)
 export const registrarPago = (data) => api.post('/transacciones/registrar-pago', data)
+
+// Chat interno
+export const getConversacionesPropietario = (id_propietario) =>
+  api.get(`/mensajes/conversaciones/propietario/${id_propietario}`)
+export const getConversacionesInquilino = (id_inquilino) =>
+  api.get(`/mensajes/conversaciones/inquilino/${id_inquilino}`)
+export const getMensajesConversacion = (id_propiedad, id_propietario, id_inquilino) =>
+  api.get(`/mensajes/${id_propiedad}/${id_propietario}/${id_inquilino}`)
+export const enviarMensaje = (data) => api.post('/mensajes', data)
+export const marcarMensajesLeidos = (data) => api.put('/mensajes/marcar-leido', data)
 
 export default api
