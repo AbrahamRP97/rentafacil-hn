@@ -40,6 +40,7 @@ export const getConsultasAvanzadas = () => api.get('/consultas-avanzadas')
 export const runConsultaAvanzada = (id) => api.get(`/consultas-avanzadas/${id}`)
 export const aprobarReserva = (data) => api.post('/transacciones/aprobar-reserva', data)
 export const registrarPago = (data) => api.post('/transacciones/registrar-pago', data)
+export const cancelarContrato = (data) => api.post('/transacciones/cancelar-contrato', data)
 
 // Chat interno
 export const getConversacionesPropietario = (id_propietario) =>
