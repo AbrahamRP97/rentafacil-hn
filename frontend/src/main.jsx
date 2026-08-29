@@ -10,6 +10,8 @@ import Login from './pages/Login'
 import Registro from './pages/Registro'
 import PanelAdmin from './pages/PanelAdmin'
 import ConsultasAvanzadas from './pages/ConsultasAvanzadas'
+import Mensajes from './pages/Mensajes'
+import ChatConversacion from './pages/ChatConversacion'
 import RutaProtegida from './components/RutaProtegida'
 import './index.css'
 
@@ -32,6 +34,16 @@ createRoot(document.getElementById('root')).render(
           <Route path="/admin/consultas-avanzadas" element={
             <RutaProtegida rol="anfitrion">
               <ConsultasAvanzadas />
+            </RutaProtegida>
+          } />
+          <Route path="/mensajes" element={
+            <RutaProtegida>
+              <Mensajes />
+            </RutaProtegida>
+          } />
+          <Route path="/mensajes/:id_propiedad/:id_otro" element={
+            <RutaProtegida>
+              <ChatConversacion />
             </RutaProtegida>
           } />
         </Routes>

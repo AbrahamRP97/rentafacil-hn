@@ -203,7 +203,13 @@ function DetallePropiedades() {
               📧 <a href={`mailto:${propietario.email}?subject=Consulta sobre ${propiedad.titulo}`} style={styles.link}>
                 {propietario.email}
               </a>
+              {' '}(contacto manual desde tu correo)
             </p>
+            {usuario && usuario.rol === 'inquilino' && (
+              <Link to={`/mensajes/${id}/${propiedad.id_propietario}`} style={styles.botonChat}>
+                💬 Enviar mensaje por el chat interno
+              </Link>
+            )}
           </div>
         )}
 
@@ -372,6 +378,17 @@ const styles = {
   link: {
     color: '#e94560',
     textDecoration: 'none',
+    fontWeight: 'bold'
+  },
+  botonChat: {
+    display: 'inline-block',
+    marginTop: '0.6rem',
+    padding: '0.6rem 1.2rem',
+    backgroundColor: '#1a1a2e',
+    color: 'white',
+    textDecoration: 'none',
+    borderRadius: '4px',
+    fontSize: '0.9rem',
     fontWeight: 'bold'
   },
   seccionReserva: {
