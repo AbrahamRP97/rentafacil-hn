@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getPropiedades, getPropietarios, getInquilinos, getContratos, getPagos, createPropiedad,
+import { getPropiedades, getReservas, getContratos, getPagos, createPropiedad,
   getImagenes, uploadImagen, deleteImagen, setImagenPortada, getPropietarioPorAuth } from '../services/api'
 
 function PanelAdmin() {
@@ -10,15 +10,15 @@ function PanelAdmin() {
   const [propietarioActual, setPropietarioActual] = useState(null)
   const [cargandoPropietario, setCargandoPropietario] = useState(true)
 
-  const [stats, setStats] = useState({
-    propiedades: 0,
-    propietarios: 0,
-    inquilinos: 0,
-    contratos: 0,
-    pagos: 0
-  })
   const [propiedades, setPropiedades] = useState([])
+  const [reservas, setReservas] = useState([])
+  const [contratos, setContratos] = useState([])
+  const [pagos, setPagos] = useState([])
+
   const [propiedadesPropias, setPropiedadesPropias] = useState([])
+  const [contratosPropios, setContratosPropios] = useState([])
+  const [pagosPropios, setPagosPropios] = useState([])
+
   const [loading, setLoading] = useState(true)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [imagenes, setImagenes] = useState([])
@@ -59,32 +59,41 @@ function PanelAdmin() {
   const cargarDatos = () => {
     Promise.all([
       getPropiedades(),
-      getPropietarios(),
-      getInquilinos(),
+      getReservas(),
       getContratos(),
       getPagos()
-    ]).then(([p, pr, i, c, pa]) => {
-      setStats({
-        propiedades: p.data.length,
-        propietarios: pr.data.length,
-        inquilinos: i.data.length,
-        contratos: c.data.length,
-        pagos: pa.data.length
-      })
+    ]).then(([p, r, c, pa]) => {
       setPropiedades(p.data)
+      setReservas(r.data)
+      setContratos(c.data)
+      setPagos(pa.data)
       setLoading(false)
     }).catch(() => setLoading(false))
   }
 
+  // Cruza propiedades -> reservas -> contratos -> pagos, todo filtrado
+  // al propietario que inició sesión
   useEffect(() => {
-    if (propietarioActual) {
-      setPropiedadesPropias(
-        propiedades.filter(p => p.id_propietario === propietarioActual.id_propietario)
-      )
-    } else {
+    if (!propietarioActual) {
       setPropiedadesPropias([])
+      setContratosPropios([])
+      setPagosPropios([])
+      return
     }
-  }, [propiedades, propietarioActual])
+
+    const propias = propiedades.filter(p => p.id_propietario === propietarioActual.id_propietario)
+    setPropiedadesPropias(propias)
+
+    const idsPropiedades = propias.map(p => p.id_propiedad)
+    const reservasPropias = reservas.filter(r => idsPropiedades.includes(r.id_propiedad))
+
+    const idsReservas = reservasPropias.map(r => r.id_reserva)
+    const contratosDePropias = contratos.filter(c => idsReservas.includes(c.id_reserva))
+    setContratosPropios(contratosDePropias)
+
+    const idsContratos = contratosDePropias.map(c => c.id_contrato)
+    setPagosPropios(pagos.filter(pg => idsContratos.includes(pg.id_contrato)))
+  }, [propiedades, reservas, contratos, pagos, propietarioActual])
 
   const cargarImagenes = async (id_propiedad) => {
     try {
@@ -260,24 +269,14 @@ function PanelAdmin() {
           <span style={styles.statLabel}>Mis propiedades</span>
         </div>
         <div style={styles.statCard}>
-          <span style={styles.statIcono}>👤</span>
-          <span style={styles.statNumero}>{stats.propietarios}</span>
-          <span style={styles.statLabel}>Propietarios</span>
-        </div>
-        <div style={styles.statCard}>
-          <span style={styles.statIcono}>🧑‍🤝‍🧑</span>
-          <span style={styles.statNumero}>{stats.inquilinos}</span>
-          <span style={styles.statLabel}>Inquilinos</span>
-        </div>
-        <div style={styles.statCard}>
           <span style={styles.statIcono}>📄</span>
-          <span style={styles.statNumero}>{stats.contratos}</span>
-          <span style={styles.statLabel}>Contratos</span>
+          <span style={styles.statNumero}>{contratosPropios.length}</span>
+          <span style={styles.statLabel}>Mis contratos</span>
         </div>
         <div style={styles.statCard}>
           <span style={styles.statIcono}>💰</span>
-          <span style={styles.statNumero}>{stats.pagos}</span>
-          <span style={styles.statLabel}>Pagos</span>
+          <span style={styles.statNumero}>{pagosPropios.length}</span>
+          <span style={styles.statLabel}>Mis pagos</span>
         </div>
       </div>
 
