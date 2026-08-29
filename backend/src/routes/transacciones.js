@@ -52,4 +52,19 @@ router.post('/registrar-pago', async (req, res) => {
   res.status(201).json(data[0])
 })
 
+router.post('/cancelar-contrato', async (req, res) => {
+  const { id_contrato } = req.body
+
+  if (!id_contrato) {
+    return res.status(400).json({ error: 'id_contrato es obligatorio' })
+  }
+
+  const { data, error } = await supabase.rpc('fn_cancelar_contrato', {
+    p_id_contrato: Number(id_contrato)
+  })
+
+  if (error) return res.status(400).json({ error: error.message })
+  res.json(data[0])
+})
+
 export default router
