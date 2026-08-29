@@ -19,6 +19,10 @@ export const createInquilino = (data) => api.post('/inquilinos', data)
 export const getInquilinoPorAuth = (auth_user_id) => api.get(`/inquilinos/auth/${auth_user_id}`)
 
 export const getReservas = () => api.get('/reservas')
+export const getReserva = (id) => api.get(`/reservas/${id}`)
+export const createReserva = (data) => api.post('/reservas', data)
+export const updateReserva = (id, data) => api.put(`/reservas/${id}`, data)
+
 export const getContratos = () => api.get('/contratos')
 export const getPagos = () => api.get('/pagos')
 export const getImagenes = (id_propiedad) => api.get(`/imagenes/${id_propiedad}`)
