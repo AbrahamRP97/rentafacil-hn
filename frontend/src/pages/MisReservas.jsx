@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getInquilinoPorAuth, getReservas, getContratos, getPagos,
-  registrarPago, cancelarContrato, enviarMensaje } from '../services/api'
+  registrarPago, cancelarContrato, enviarMensaje,
+  subirComprobante, crearSesionPago, verificarSesionPago } from '../services/api'
 
 function MisReservas() {
   const { usuario } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [inquilinoActual, setInquilinoActual] = useState(null)
   const [reservas, setReservas] = useState([])
@@ -16,6 +19,7 @@ function MisReservas() {
   const [procesando, setProcesando] = useState(null)
 
   const [formPago, setFormPago] = useState({})
+  const [archivoComprobante, setArchivoComprobante] = useState({})
 
   useEffect(() => {
     if (!usuario) return
@@ -37,6 +41,36 @@ function MisReservas() {
 
   useEffect(() => {
     cargarDatos()
+  }, [])
+
+  // Si venimos de un pago con tarjeta exitoso (redirigido desde Stripe), lo confirmamos y registramos
+  useEffect(() => {
+    const pago = searchParams.get('pago')
+    const sessionId = searchParams.get('session_id')
+    const idContrato = searchParams.get('id_contrato')
+
+    if (pago === 'exito' && sessionId && idContrato) {
+      verificarSesionPago({ session_id: sessionId })
+        .then(async (res) => {
+          if (res.data.confirmado) {
+            await registrarPago({
+              id_contrato: idContrato,
+              monto: res.data.monto,
+              metodo_pago: 'tarjeta',
+              referencia: sessionId
+            })
+            setExito('Pago con tarjeta registrado correctamente')
+            cargarDatos()
+            setTimeout(() => setExito(null), 4000)
+          }
+        })
+        .catch(() => setError('No se pudo confirmar el pago con Stripe.'))
+        .finally(() => setSearchParams({}))
+    } else if (pago === 'cancelado') {
+      setError('El pago con tarjeta fue cancelado.')
+      setSearchParams({})
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (!usuario || loading) return <p style={styles.mensaje}>Cargando tus reservas...</p>
@@ -65,23 +99,60 @@ function MisReservas() {
     })
   }
 
-  const handleRegistrarPago = async (id_contrato) => {
+  const handleSeleccionarComprobante = (id_contrato, file) => {
+    setArchivoComprobante({ ...archivoComprobante, [id_contrato]: file })
+  }
+
+  const handleRegistrarPago = async (reserva) => {
+    const id_contrato = reserva.contrato.id_contrato
     const datos = formPago[id_contrato] || {}
+
     if (!datos.monto || !datos.metodo_pago) {
       setError('Completa el monto y el método de pago')
       return
     }
 
-    setProcesando(id_contrato)
     setError(null)
+    setProcesando(id_contrato)
+
     try {
+      if (datos.metodo_pago === 'tarjeta') {
+        // Pago real con Stripe: se crea la sesión y se redirige a la página de pago de Stripe.
+        // El pago se registra en nuestra BD solo después de confirmarse (ver useEffect de arriba).
+        const res = await crearSesionPago({
+          id_contrato,
+          monto: parseFloat(datos.monto),
+          titulo_propiedad: reserva.PROPIEDADES?.titulo
+        })
+        window.location.href = res.data.url
+        return
+      }
+
+      let referencia = datos.referencia || null
+
+      if (datos.metodo_pago === 'transferencia') {
+        const archivo = archivoComprobante[id_contrato]
+        if (!archivo) {
+          setError('Adjunta una captura de la transferencia antes de continuar')
+          setProcesando(null)
+          return
+        }
+        const formData = new FormData()
+        formData.append('comprobante', archivo)
+        formData.append('id_contrato', id_contrato)
+        const resSubida = await subirComprobante(formData)
+        referencia = resSubida.data.url
+      }
+
       await registrarPago({
         id_contrato,
         monto: parseFloat(datos.monto),
         metodo_pago: datos.metodo_pago,
-        referencia: datos.referencia || null
+        referencia
       })
+
       setFormPago({ ...formPago, [id_contrato]: {} })
+      setArchivoComprobante({ ...archivoComprobante, [id_contrato]: null })
       setExito('Pago registrado correctamente')
       cargarDatos()
       setTimeout(() => setExito(null), 3000)
@@ -126,87 +197,109 @@ function MisReservas() {
         <p style={styles.mensaje}>Todavía no has solicitado ninguna reserva.</p>
       ) : (
         <div style={styles.lista}>
-          {reservasConDetalle.map(r => (
-            <div key={r.id_reserva} style={styles.card}>
-              <div style={styles.cardHeader}>
-                <h3 style={styles.propiedadTitulo}>{r.PROPIEDADES?.titulo}</h3>
-                <span style={{
-                  ...styles.badge,
-                  backgroundColor:
-                    r.estado === 'aprobada' ? '#28a745' :
-                    r.estado === 'pendiente' ? '#ffc107' :
-                    '#e94560'
-                }}>
-                  {r.estado}
-                </span>
-              </div>
-              <p style={styles.fechas}>{r.fecha_inicio} al {r.fecha_fin}</p>
+          {reservasConDetalle.map(r => {
+            const metodoSeleccionado = formPago[r.contrato?.id_contrato]?.metodo_pago
 
-              {r.contrato && r.contrato.estado === 'activo' && (
-                <div style={styles.detalleContrato}>
-                  <p style={styles.lineaDetalle}>Monto mensual: L. {r.contrato.monto_mensual}</p>
-                  <p style={styles.lineaDetalle}>Depósito requerido: L. {r.contrato.deposito}</p>
-                  <p style={styles.lineaDetalle}>Total pagado: L. {r.totalPagado.toFixed(2)}</p>
+            return (
+              <div key={r.id_reserva} style={styles.card}>
+                <div style={styles.cardHeader}>
+                  <h3 style={styles.propiedadTitulo}>{r.PROPIEDADES?.titulo}</h3>
+                  <span style={{
+                    ...styles.badge,
+                    backgroundColor:
+                      r.estado === 'aprobada' ? '#28a745' :
+                      r.estado === 'pendiente' ? '#ffc107' :
+                      '#e94560'
+                  }}>
+                    {r.estado}
+                  </span>
+                </div>
+                <p style={styles.fechas}>{r.fecha_inicio} al {r.fecha_fin}</p>
 
-                  {r.pagosDelContrato.length > 0 && (
-                    <div style={styles.historialPagos}>
-                      {r.pagosDelContrato.map(p => (
-                        <p key={p.id_pago} style={styles.itemPago}>
-                          L. {p.monto} — {p.metodo_pago} — {p.fecha_pago}
-                        </p>
-                      ))}
+                {r.contrato && r.contrato.estado === 'activo' && (
+                  <div style={styles.detalleContrato}>
+                    <p style={styles.lineaDetalle}>Monto mensual: L. {r.contrato.monto_mensual}</p>
+                    <p style={styles.lineaDetalle}>Depósito requerido: L. {r.contrato.deposito}</p>
+                    <p style={styles.lineaDetalle}>Total pagado: L. {r.totalPagado.toFixed(2)}</p>
+
+                    {r.pagosDelContrato.length > 0 && (
+                      <div style={styles.historialPagos}>
+                        {r.pagosDelContrato.map(p => (
+                          <p key={p.id_pago} style={styles.itemPago}>
+                            L. {p.monto} — {p.metodo_pago} — {p.fecha_pago}
+                            {p.referencia && p.referencia.startsWith('http') && (
+                              <> — <a href={p.referencia} target="_blank" rel="noreferrer" style={styles.linkComprobante}>Ver comprobante</a></>
+                            )}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+
+                    <div style={styles.formPago}>
+                      <input
+                        type="number"
+                        placeholder="Monto a pagar"
+                        value={formPago[r.contrato.id_contrato]?.monto || ''}
+                        onChange={(e) => handleChangePago(r.contrato.id_contrato, 'monto', e.target.value)}
+                        style={styles.inputPago}
+                      />
+                      <select
+                        value={formPago[r.contrato.id_contrato]?.metodo_pago || ''}
+                        onChange={(e) => handleChangePago(r.contrato.id_contrato, 'metodo_pago', e.target.value)}
+                        style={styles.inputPago}
+                      >
+                        <option value="">Método de pago</option>
+                        <option value="efectivo">Efectivo</option>
+                        <option value="transferencia">Transferencia bancaria</option>
+                        <option value="tarjeta">Tarjeta (pago en línea)</option>
+                      </select>
+
+                      {metodoSeleccionado === 'transferencia' && (
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleSeleccionarComprobante(r.contrato.id_contrato, e.target.files[0])}
+                          style={styles.inputPago}
+                        />
+                      )}
+
+                      {metodoSeleccionado !== 'tarjeta' && metodoSeleccionado !== 'transferencia' && (
+                        <input
+                          type="text"
+                          placeholder="Referencia (opcional)"
+                          value={formPago[r.contrato.id_contrato]?.referencia || ''}
+                          onChange={(e) => handleChangePago(r.contrato.id_contrato, 'referencia', e.target.value)}
+                          style={styles.inputPago}
+                        />
+                      )}
+
+                      <button
+                        onClick={() => handleRegistrarPago(r)}
+                        style={styles.botonPagar}
+                        disabled={procesando === r.contrato.id_contrato}
+                      >
+                        {procesando === r.contrato.id_contrato
+                          ? 'Procesando...'
+                          : metodoSeleccionado === 'tarjeta' ? 'Pagar con tarjeta' : 'Registrar pago'}
+                      </button>
                     </div>
-                  )}
 
-                  <div style={styles.formPago}>
-                    <input
-                      type="number"
-                      placeholder="Monto a pagar"
-                      value={formPago[r.contrato.id_contrato]?.monto || ''}
-                      onChange={(e) => handleChangePago(r.contrato.id_contrato, 'monto', e.target.value)}
-                      style={styles.inputPago}
-                    />
-                    <select
-                      value={formPago[r.contrato.id_contrato]?.metodo_pago || ''}
-                      onChange={(e) => handleChangePago(r.contrato.id_contrato, 'metodo_pago', e.target.value)}
-                      style={styles.inputPago}
-                    >
-                      <option value="">Método de pago</option>
-                      <option value="efectivo">Efectivo</option>
-                      <option value="transferencia">Transferencia</option>
-                      <option value="tarjeta">Tarjeta</option>
-                    </select>
-                    <input
-                      type="text"
-                      placeholder="Referencia (opcional)"
-                      value={formPago[r.contrato.id_contrato]?.referencia || ''}
-                      onChange={(e) => handleChangePago(r.contrato.id_contrato, 'referencia', e.target.value)}
-                      style={styles.inputPago}
-                    />
                     <button
-                      onClick={() => handleRegistrarPago(r.contrato.id_contrato)}
-                      style={styles.botonPagar}
+                      onClick={() => handleCancelar(r)}
+                      style={styles.botonCancelar}
                       disabled={procesando === r.contrato.id_contrato}
                     >
-                      {procesando === r.contrato.id_contrato ? 'Procesando...' : 'Registrar pago'}
+                      Cancelar este contrato
                     </button>
                   </div>
+                )}
 
-                  <button
-                    onClick={() => handleCancelar(r)}
-                    style={styles.botonCancelar}
-                    disabled={procesando === r.contrato.id_contrato}
-                  >
-                    Cancelar este contrato
-                  </button>
-                </div>
-              )}
-
-              {r.contrato && r.contrato.estado === 'cancelado' && (
-                <p style={styles.avisoCancelado}>Este contrato fue cancelado.</p>
-              )}
-            </div>
-          ))}
+                {r.contrato && r.contrato.estado === 'cancelado' && (
+                  <p style={styles.avisoCancelado}>Este contrato fue cancelado.</p>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
@@ -279,6 +372,11 @@ const styles = {
     fontSize: '0.8rem',
     color: '#555',
     margin: '0.2rem 0'
+  },
+  linkComprobante: {
+    color: '#e94560',
+    fontWeight: 'bold',
+    textDecoration: 'none'
   },
   formPago: {
     display: 'flex',

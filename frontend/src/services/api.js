@@ -52,4 +52,14 @@ export const getMensajesConversacion = (id_propiedad, id_propietario, id_inquili
 export const enviarMensaje = (data) => api.post('/mensajes', data)
 export const marcarMensajesLeidos = (data) => api.put('/mensajes/marcar-leido', data)
 
+// Comprobante de transferencia
+export const subirComprobante = (formData) =>
+  api.post('/comprobantes/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+
+// Pago con tarjeta (Stripe)
+export const crearSesionPago = (data) => api.post('/pagos-stripe/crear-sesion', data)
+export const verificarSesionPago = (data) => api.post('/pagos-stripe/verificar-sesion', data)
+
 export default api
