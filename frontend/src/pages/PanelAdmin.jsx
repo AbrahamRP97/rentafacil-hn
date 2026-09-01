@@ -22,6 +22,8 @@ function PanelAdmin() {
   const [pagosPropios, setPagosPropios] = useState([])
   const [depositoPorReserva, setDepositoPorReserva] = useState({})
   const [procesandoReserva, setProcesandoReserva] = useState(null)
+  const [mostrarHistorialPagos, setMostrarHistorialPagos] = useState(false)
+  const [mostrarContratos, setMostrarContratos] = useState(false)
 
   const [loading, setLoading] = useState(true)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
@@ -438,90 +440,118 @@ function PanelAdmin() {
 
       {contratosConDetalle.length > 0 && (
         <div style={styles.seccion}>
-          <h3 style={styles.seccionTitulo}>Mis contratos</h3>
-          <table style={styles.tabla}>
-            <thead>
-              <tr>
-                <th style={styles.th}>Propiedad</th>
-                <th style={styles.th}>Inquilino</th>
-                <th style={styles.th}>Del</th>
-                <th style={styles.th}>Al</th>
-                <th style={styles.th}>Monto/mes</th>
-                <th style={styles.th}>Depósito</th>
-                <th style={styles.th}>Estado</th>
-                <th style={styles.th}>Acción</th>
-              </tr>
-            </thead>
-            <tbody>
-              {contratosConDetalle.map(c => (
-                <tr key={c.id_contrato} style={styles.tr}>
-                  <td style={styles.td}>{c.reserva?.PROPIEDADES?.titulo}</td>
-                  <td style={styles.td}>{c.reserva?.INQUILINOS?.nombre} {c.reserva?.INQUILINOS?.apellido}</td>
-                  <td style={styles.td}>{c.fecha_inicio}</td>
-                  <td style={styles.td}>{c.fecha_fin}</td>
-                  <td style={styles.td}>L. {c.monto_mensual}</td>
-                  <td style={styles.td}>L. {c.deposito}</td>
-                  <td style={styles.td}>
-                    <span style={{
-                      ...styles.badge,
-                      backgroundColor: c.estado === 'activo' ? '#28a745' : c.estado === 'cancelado' ? '#e94560' : '#ffc107'
-                    }}>
-                      {c.estado}
-                    </span>
-                  </td>
-                  <td style={styles.td}>
-                    {c.estado === 'activo' && (
-                      <button
-                        onClick={() => handleCancelarContrato(c.id_contrato)}
-                        style={styles.botonRechazar}
-                        disabled={procesandoReserva === c.id_contrato}
-                      >
-                        {procesandoReserva === c.id_contrato ? '...' : 'Cancelar'}
-                      </button>
-                    )}
-                  </td>
+          <div
+            style={styles.resumenPagosHeader}
+            onClick={() => setMostrarContratos(!mostrarContratos)}
+          >
+            <div>
+              <h3 style={{ ...styles.seccionTitulo, margin: 0 }}>Mis contratos</h3>
+              <p style={styles.resumenPagosTexto}>
+                {contratosConDetalle.filter(c => c.estado === 'activo').length} activo(s) de {contratosConDetalle.length} en total
+              </p>
+            </div>
+            <span style={styles.flechaToggle}>{mostrarContratos ? '▲' : '▼'}</span>
+          </div>
+
+          {mostrarContratos && (
+            <table style={{ ...styles.tabla, marginTop: '1rem' }}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>Propiedad</th>
+                  <th style={styles.th}>Inquilino</th>
+                  <th style={styles.th}>Del</th>
+                  <th style={styles.th}>Al</th>
+                  <th style={styles.th}>Monto/mes</th>
+                  <th style={styles.th}>Depósito</th>
+                  <th style={styles.th}>Estado</th>
+                  <th style={styles.th}>Acción</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {contratosConDetalle.map(c => (
+                  <tr key={c.id_contrato} style={styles.tr}>
+                    <td style={styles.td}>{c.reserva?.PROPIEDADES?.titulo}</td>
+                    <td style={styles.td}>{c.reserva?.INQUILINOS?.nombre} {c.reserva?.INQUILINOS?.apellido}</td>
+                    <td style={styles.td}>{c.fecha_inicio}</td>
+                    <td style={styles.td}>{c.fecha_fin}</td>
+                    <td style={styles.td}>L. {c.monto_mensual}</td>
+                    <td style={styles.td}>L. {c.deposito}</td>
+                    <td style={styles.td}>
+                      <span style={{
+                        ...styles.badge,
+                        backgroundColor: c.estado === 'activo' ? '#28a745' : c.estado === 'cancelado' ? '#e94560' : '#ffc107'
+                      }}>
+                        {c.estado}
+                      </span>
+                    </td>
+                    <td style={styles.td}>
+                      {c.estado === 'activo' && (
+                        <button
+                          onClick={() => handleCancelarContrato(c.id_contrato)}
+                          style={styles.botonRechazar}
+                          disabled={procesandoReserva === c.id_contrato}
+                        >
+                          {procesandoReserva === c.id_contrato ? '...' : 'Cancelar'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
 
       {pagosConDetalle.length > 0 && (
         <div style={styles.seccion}>
-          <h3 style={styles.seccionTitulo}>Historial de pagos</h3>
-          <table style={styles.tabla}>
-            <thead>
-              <tr>
-                <th style={styles.th}>Propiedad</th>
-                <th style={styles.th}>Inquilino</th>
-                <th style={styles.th}>Monto</th>
-                <th style={styles.th}>Método</th>
-                <th style={styles.th}>Fecha</th>
-                <th style={styles.th}>Comprobante</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pagosConDetalle.map(p => (
-                <tr key={p.id_pago} style={styles.tr}>
-                  <td style={styles.td}>{p.contrato?.reserva?.PROPIEDADES?.titulo}</td>
-                  <td style={styles.td}>{p.contrato?.reserva?.INQUILINOS?.nombre} {p.contrato?.reserva?.INQUILINOS?.apellido}</td>
-                  <td style={styles.td}>L. {p.monto}</td>
-                  <td style={styles.td}>{p.metodo_pago}</td>
-                  <td style={styles.td}>{p.fecha_pago}</td>
-                  <td style={styles.td}>
-                    {p.referencia && p.referencia.startsWith('http') ? (
-                      <a href={p.referencia} target="_blank" rel="noreferrer" style={styles.botonImagenes}>
-                        Ver comprobante
-                      </a>
-                    ) : (
-                      p.referencia || '—'
-                    )}
-                  </td>
+          <div
+            style={styles.resumenPagosHeader}
+            onClick={() => setMostrarHistorialPagos(!mostrarHistorialPagos)}
+          >
+            <div>
+              <h3 style={{ ...styles.seccionTitulo, margin: 0 }}>Historial de pagos</h3>
+              <p style={styles.resumenPagosTexto}>
+                {pagosConDetalle.length} pago(s) · Total: L. {pagosConDetalle.reduce((s, p) => s + parseFloat(p.monto), 0).toFixed(2)}
+              </p>
+            </div>
+            <span style={styles.flechaToggle}>{mostrarHistorialPagos ? '▲' : '▼'}</span>
+          </div>
+
+          {mostrarHistorialPagos && (
+            <table style={{ ...styles.tabla, marginTop: '1rem' }}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>Propiedad</th>
+                  <th style={styles.th}>Inquilino</th>
+                  <th style={styles.th}>Monto</th>
+                  <th style={styles.th}>Método</th>
+                  <th style={styles.th}>Fecha</th>
+                  <th style={styles.th}>Comprobante</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {pagosConDetalle.map(p => (
+                  <tr key={p.id_pago} style={styles.tr}>
+                    <td style={styles.td}>{p.contrato?.reserva?.PROPIEDADES?.titulo}</td>
+                    <td style={styles.td}>{p.contrato?.reserva?.INQUILINOS?.nombre} {p.contrato?.reserva?.INQUILINOS?.apellido}</td>
+                    <td style={styles.td}>L. {p.monto}</td>
+                    <td style={styles.td}>{p.metodo_pago}</td>
+                    <td style={styles.td}>{p.fecha_pago}</td>
+                    <td style={styles.td}>
+                      {p.referencia && p.referencia.startsWith('http') ? (
+                        <a href={p.referencia} target="_blank" rel="noreferrer" style={styles.botonImagenes}>
+                          Ver comprobante
+                        </a>
+                      ) : (
+                        p.referencia || '—'
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
 
@@ -937,6 +967,21 @@ const styles = {
     fontSize: '0.9rem'
   },
   mensaje: { textAlign: 'center', color: '#888', padding: '2rem' },
+    resumenPagosHeader: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      cursor: 'pointer'
+    },
+    resumenPagosTexto: {
+      margin: '0.3rem 0 0 0',
+      fontSize: '0.85rem',
+      color: '#888'
+    },
+    flechaToggle: {
+      color: '#888',
+      fontSize: '0.9rem'
+    },
     inputDeposito: {
       width: '100px',
       padding: '0.4rem 0.6rem',
