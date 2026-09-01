@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getPropiedades, getReservas, getContratos, getPagos, createPropiedad,
   getImagenes, uploadImagen, deleteImagen, setImagenPortada, getPropietarioPorAuth,
-  aprobarReserva, updateReserva, enviarMensaje, cancelarContrato } from '../services/api'
+  aprobarReserva, updateReserva, enviarMensaje, cancelarContrato, createUbicacion } from '../services/api'
 
 function PanelAdmin() {
   const { usuario } = useAuth()
@@ -44,7 +44,9 @@ function PanelAdmin() {
     metros_cuadrados: '',
     tipo: 'apartamento',
     estado: 'disponible',
-    id_ubicacion: ''
+    departamento: '',
+    municipio: '',
+    direccion: ''
   })
 
   const [imagenesNuevas, setImagenesNuevas] = useState([])
@@ -295,20 +297,30 @@ function PanelAdmin() {
       return
     }
 
-    if (!form.titulo || !form.precio_mensual || !form.id_ubicacion) {
+    if (!form.titulo || !form.precio_mensual || !form.departamento || !form.municipio || !form.direccion) {
       setError('Por favor completa todos los campos obligatorios')
       return
     }
 
     try {
+      // Primero se crea la ubicación real que escribió el propietario
+      const resUbicacion = await createUbicacion({
+        departamento: form.departamento,
+        municipio: form.municipio,
+        direccion: form.direccion
+      })
+      const idNuevaUbicacion = resUbicacion.data.id_ubicacion
+
+      const { departamento, municipio, direccion, ...datosPropiedad } = form
+
       const res = await createPropiedad({
-        ...form,
+        ...datosPropiedad,
         precio_mensual:   parseFloat(form.precio_mensual),
         habitaciones:     parseInt(form.habitaciones),
         banos:            parseInt(form.banos),
         metros_cuadrados: parseFloat(form.metros_cuadrados),
         id_propietario:   propietarioActual.id_propietario,
-        id_ubicacion:     parseInt(form.id_ubicacion)
+        id_ubicacion:     idNuevaUbicacion
       })
 
       const idNuevaPropiedad = res.data.id_propiedad
@@ -331,7 +343,7 @@ function PanelAdmin() {
         titulo: '', descripcion: '', precio_mensual: '',
         habitaciones: '', banos: '', metros_cuadrados: '',
         tipo: 'apartamento', estado: 'disponible',
-        id_ubicacion: ''
+        departamento: '', municipio: '', direccion: ''
       })
       imagenesNuevas.forEach(img => URL.revokeObjectURL(img.previewUrl))
       setImagenesNuevas([])
@@ -625,9 +637,19 @@ function PanelAdmin() {
               </div>
             </div>
 
+            <div style={styles.fila}>
+              <div style={styles.campo}>
+                <label style={styles.label}>Departamento *</label>
+                <input type="text" name="departamento" value={form.departamento} onChange={handleChange} placeholder="Cortés" style={styles.input} />
+              </div>
+              <div style={styles.campo}>
+                <label style={styles.label}>Municipio *</label>
+                <input type="text" name="municipio" value={form.municipio} onChange={handleChange} placeholder="San Pedro Sula" style={styles.input} />
+              </div>
+            </div>
             <div style={styles.campo}>
-              <label style={styles.label}>ID Ubicación *</label>
-              <input type="number" name="id_ubicacion" value={form.id_ubicacion} onChange={handleChange} placeholder="1" style={styles.input} />
+              <label style={styles.label}>Dirección exacta *</label>
+              <input type="text" name="direccion" value={form.direccion} onChange={handleChange} placeholder="Colonia Trejo, calle principal, casa #12" style={styles.input} />
             </div>
 
             <div style={styles.agregarImagen}>

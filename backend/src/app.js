@@ -5,6 +5,7 @@ import dotenv from 'dotenv'
 import propietariosRouter   from './routes/propietarios.js'
 import inquilinosRouter     from './routes/inquilinos.js'
 import propiedadesRouter    from './routes/propiedades.js'
+import ubicacionesRouter    from './routes/ubicaciones.js'
 import reservasRouter       from './routes/reservas.js'
 import contratosRouter      from './routes/contratos.js'
 import pagosRouter          from './routes/pagos.js'
@@ -25,6 +26,7 @@ app.use(express.json())
 app.use('/api/propietarios',   propietariosRouter)
 app.use('/api/inquilinos',     inquilinosRouter)
 app.use('/api/propiedades',    propiedadesRouter)
+app.use('/api/ubicaciones',    ubicacionesRouter)
 app.use('/api/reservas',       reservasRouter)
 app.use('/api/contratos',      contratosRouter)
 app.use('/api/pagos',          pagosRouter)

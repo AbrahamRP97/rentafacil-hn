@@ -10,6 +10,9 @@ export const createPropiedad = (data) => api.post('/propiedades', data)
 export const updatePropiedad = (id, data) => api.put(`/propiedades/${id}`, data)
 export const deletePropiedad = (id) => api.delete(`/propiedades/${id}`)
 
+export const getUbicaciones = () => api.get('/ubicaciones')
+export const createUbicacion = (data) => api.post('/ubicaciones', data)
+
 export const getPropietarios = () => api.get('/propietarios')
 export const getPropietario = (id) => api.get(`/propietarios/${id}`)
 export const createPropietario = (data) => api.post('/propietarios', data)
