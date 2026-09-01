@@ -29,6 +29,9 @@ export const createReserva = (data) => api.post('/reservas', data)
 export const updateReserva = (id, data) => api.put(`/reservas/${id}`, data)
 
 export const getContratos = () => api.get('/contratos')
+export const getContrato = (id) => api.get(`/contratos/${id}`)
+export const updateContrato = (id, data) => api.put(`/contratos/${id}`, data)
+
 export const getPagos = () => api.get('/pagos')
 export const getImagenes = (id_propiedad) => api.get(`/imagenes/${id_propiedad}`)
 export const createImagen = (data) => api.post('/imagenes', data)

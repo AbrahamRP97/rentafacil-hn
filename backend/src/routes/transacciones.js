@@ -4,7 +4,7 @@ import supabase from '../db.js'
 const router = Router()
 
 router.post('/aprobar-reserva', async (req, res) => {
-  const { id_reserva, deposito = null } = req.body
+  const { id_reserva, deposito = null, instrucciones_checkin = null } = req.body
 
   if (!id_reserva) {
     return res.status(400).json({ error: 'id_reserva es obligatorio' })
@@ -12,7 +12,8 @@ router.post('/aprobar-reserva', async (req, res) => {
 
   const { data, error } = await supabase.rpc('fn_aprobar_reserva', {
     p_id_reserva: Number(id_reserva),
-    p_deposito: deposito === null ? null : Number(deposito)
+    p_deposito: deposito === null ? null : Number(deposito),
+    p_instrucciones_checkin: instrucciones_checkin
   })
 
   if (error) return res.status(400).json({ error: error.message })

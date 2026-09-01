@@ -13,6 +13,7 @@ import ConsultasAvanzadas from './pages/ConsultasAvanzadas'
 import Mensajes from './pages/Mensajes'
 import ChatConversacion from './pages/ChatConversacion'
 import MisReservas from './pages/MisReservas'
+import ContratoDigital from './pages/ContratoDigital'
 import RutaProtegida from './components/RutaProtegida'
 import './index.css'
 
@@ -50,6 +51,11 @@ createRoot(document.getElementById('root')).render(
           <Route path="/mis-reservas" element={
             <RutaProtegida rol="inquilino">
               <MisReservas />
+            </RutaProtegida>
+          } />
+          <Route path="/contrato/:id_contrato" element={
+            <RutaProtegida>
+              <ContratoDigital />
             </RutaProtegida>
           } />
         </Routes>

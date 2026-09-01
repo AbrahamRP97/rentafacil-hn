@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getInquilinoPorAuth, getReservas, getContratos, getPagos,
   registrarPago, cancelarContrato, enviarMensaje,
@@ -284,13 +284,18 @@ function MisReservas() {
                       </button>
                     </div>
 
-                    <button
-                      onClick={() => handleCancelar(r)}
-                      style={styles.botonCancelar}
-                      disabled={procesando === r.contrato.id_contrato}
-                    >
-                      Cancelar este contrato
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.8rem' }}>
+                      <Link to={`/contrato/${r.contrato.id_contrato}`} style={styles.botonVerContrato}>
+                        Ver / firmar contrato
+                      </Link>
+                      <button
+                        onClick={() => handleCancelar(r)}
+                        style={styles.botonCancelar}
+                        disabled={procesando === r.contrato.id_contrato}
+                      >
+                        Cancelar este contrato
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -402,7 +407,6 @@ const styles = {
     fontSize: '0.85rem'
   },
   botonCancelar: {
-    marginTop: '0.8rem',
     padding: '0.5rem 1rem',
     backgroundColor: '#e94560',
     color: 'white',
@@ -411,6 +415,17 @@ const styles = {
     fontWeight: 'bold',
     cursor: 'pointer',
     fontSize: '0.85rem'
+  },
+  botonVerContrato: {
+    padding: '0.5rem 1rem',
+    backgroundColor: '#1a1a2e',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    fontSize: '0.85rem',
+    textDecoration: 'none'
   },
   avisoCancelado: {
     color: '#e94560',

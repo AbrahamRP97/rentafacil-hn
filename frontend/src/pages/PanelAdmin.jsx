@@ -21,6 +21,7 @@ function PanelAdmin() {
   const [contratosPropios, setContratosPropios] = useState([])
   const [pagosPropios, setPagosPropios] = useState([])
   const [depositoPorReserva, setDepositoPorReserva] = useState({})
+  const [checkinPorReserva, setCheckinPorReserva] = useState({})
   const [procesandoReserva, setProcesandoReserva] = useState(null)
   const [mostrarHistorialPagos, setMostrarHistorialPagos] = useState(false)
   const [mostrarContratos, setMostrarContratos] = useState(false)
@@ -210,19 +211,25 @@ function PanelAdmin() {
     setError(null)
     try {
       const deposito = depositoPorReserva[id_reserva]
+      const instrucciones = checkinPorReserva[id_reserva]
       await aprobarReserva({
         id_reserva,
-        deposito: deposito ? parseFloat(deposito) : null
+        deposito: deposito ? parseFloat(deposito) : null,
+        instrucciones_checkin: instrucciones || null
       })
 
       const reserva = reservasPendientes.find(r => r.id_reserva === id_reserva)
       if (reserva) {
+        let contenido = `✅ Tu solicitud de reserva para "${reserva.PROPIEDADES?.titulo}" (${reserva.fecha_inicio} al ${reserva.fecha_fin}) fue aprobada. Ya puedes revisar y firmar tu contrato digital en "Mis reservas".`
+        if (instrucciones) {
+          contenido += `\n\n📋 Instrucciones de check-in:\n${instrucciones}`
+        }
         await enviarMensaje({
           id_propiedad: reserva.id_propiedad,
           id_propietario: reserva.PROPIEDADES?.id_propietario,
           id_inquilino: reserva.id_inquilino,
           remitente: 'propietario',
-          contenido: `✅ Tu solicitud de reserva para "${reserva.PROPIEDADES?.titulo}" (${reserva.fecha_inicio} al ${reserva.fecha_fin}) fue aprobada.`
+          contenido
         }).catch(() => {})
       }
 
@@ -403,6 +410,7 @@ function PanelAdmin() {
                 <th style={styles.th}>Del</th>
                 <th style={styles.th}>Al</th>
                 <th style={styles.th}>Depósito (L.)</th>
+                <th style={styles.th}>Instrucciones check-in</th>
                 <th style={styles.th}>Acción</th>
               </tr>
             </thead>
@@ -423,6 +431,17 @@ function PanelAdmin() {
                         [r.id_reserva]: e.target.value
                       })}
                       style={styles.inputDeposito}
+                    />
+                  </td>
+                  <td style={styles.td}>
+                    <textarea
+                      placeholder="Ej: código de la puerta, hora de llegada, contacto..."
+                      value={checkinPorReserva[r.id_reserva] || ''}
+                      onChange={(e) => setCheckinPorReserva({
+                        ...checkinPorReserva,
+                        [r.id_reserva]: e.target.value
+                      })}
+                      style={styles.textareaCheckin}
                     />
                   </td>
                   <td style={styles.td}>
@@ -497,15 +516,20 @@ function PanelAdmin() {
                       </span>
                     </td>
                     <td style={styles.td}>
-                      {c.estado === 'activo' && (
-                        <button
-                          onClick={() => handleCancelarContrato(c.id_contrato)}
-                          style={styles.botonRechazar}
-                          disabled={procesandoReserva === c.id_contrato}
-                        >
-                          {procesandoReserva === c.id_contrato ? '...' : 'Cancelar'}
-                        </button>
-                      )}
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <Link to={`/contrato/${c.id_contrato}`} style={styles.botonImagenes}>
+                          Ver contrato
+                        </Link>
+                        {c.estado === 'activo' && (
+                          <button
+                            onClick={() => handleCancelarContrato(c.id_contrato)}
+                            style={styles.botonRechazar}
+                            disabled={procesandoReserva === c.id_contrato}
+                          >
+                            {procesandoReserva === c.id_contrato ? '...' : 'Cancelar'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1010,6 +1034,15 @@ const styles = {
       borderRadius: '4px',
       border: '1px solid #ddd',
       fontSize: '0.85rem'
+    },
+    textareaCheckin: {
+      width: '160px',
+      minHeight: '50px',
+      padding: '0.4rem 0.6rem',
+      borderRadius: '4px',
+      border: '1px solid #ddd',
+      fontSize: '0.8rem',
+      resize: 'vertical'
     },
     botonAprobar: {
       padding: '0.4rem 0.8rem',
