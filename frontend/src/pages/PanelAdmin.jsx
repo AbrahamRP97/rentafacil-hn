@@ -106,6 +106,11 @@ function PanelAdmin() {
     return { ...c, reserva: reservaRelacionada }
   })
 
+  const pagosConDetalle = pagosPropios.map(p => {
+    const contratoRelacionado = contratosConDetalle.find(c => c.id_contrato === p.id_contrato)
+    return { ...p, contrato: contratoRelacionado }
+  }).sort((a, b) => new Date(b.fecha_pago) - new Date(a.fecha_pago))
+
   const cargarImagenes = async (id_propiedad) => {
     try {
       const res = await getImagenes(id_propiedad)
@@ -473,6 +478,44 @@ function PanelAdmin() {
                       >
                         {procesandoReserva === c.id_contrato ? '...' : 'Cancelar'}
                       </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {pagosConDetalle.length > 0 && (
+        <div style={styles.seccion}>
+          <h3 style={styles.seccionTitulo}>Historial de pagos</h3>
+          <table style={styles.tabla}>
+            <thead>
+              <tr>
+                <th style={styles.th}>Propiedad</th>
+                <th style={styles.th}>Inquilino</th>
+                <th style={styles.th}>Monto</th>
+                <th style={styles.th}>Método</th>
+                <th style={styles.th}>Fecha</th>
+                <th style={styles.th}>Comprobante</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pagosConDetalle.map(p => (
+                <tr key={p.id_pago} style={styles.tr}>
+                  <td style={styles.td}>{p.contrato?.reserva?.PROPIEDADES?.titulo}</td>
+                  <td style={styles.td}>{p.contrato?.reserva?.INQUILINOS?.nombre} {p.contrato?.reserva?.INQUILINOS?.apellido}</td>
+                  <td style={styles.td}>L. {p.monto}</td>
+                  <td style={styles.td}>{p.metodo_pago}</td>
+                  <td style={styles.td}>{p.fecha_pago}</td>
+                  <td style={styles.td}>
+                    {p.referencia && p.referencia.startsWith('http') ? (
+                      <a href={p.referencia} target="_blank" rel="noreferrer" style={styles.botonImagenes}>
+                        Ver comprobante
+                      </a>
+                    ) : (
+                      p.referencia || '—'
                     )}
                   </td>
                 </tr>
