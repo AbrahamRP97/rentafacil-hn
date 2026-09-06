@@ -20,8 +20,7 @@ router.post('/consultar', async (req, res) => {
       return res.status(400).json({ error: 'La pregunta es obligatoria' })
     }
 
-    const modelo = 'gemini-3-flash'
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`
+    const url = 'https://generativelanguage.googleapis.com/v1beta/interactions'
 
     const respuestaGemini = await fetch(url, {
       method: 'POST',
@@ -30,18 +29,22 @@ router.post('/consultar', async (req, res) => {
         'x-goog-api-key': process.env.GEMINI_API_KEY
       },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-        contents: [{ role: 'user', parts: [{ text: pregunta }] }]
+        model: 'gemini-3.8-flash',
+        input: pregunta,
+        system_instruction: SYSTEM_INSTRUCTION
       })
     })
 
     const datos = await respuestaGemini.json()
 
-    if (!respuestaGemini.ok) {
+    if (!respuestaGemini.ok || datos.status === 'failed') {
       return res.status(500).json({ error: datos.error?.message || 'Error al consultar Gemini' })
     }
 
-    const texto = datos.candidates?.[0]?.content?.parts?.[0]?.text || 'No se pudo generar una respuesta.'
+    const pasoRespuesta = datos.steps?.find(paso => paso.type === 'model_output')
+    const bloqueTexto = pasoRespuesta?.content?.find(bloque => bloque.type === 'text')
+    const texto = bloqueTexto?.text || 'No se pudo generar una respuesta.'
+
     res.json({ respuesta: texto })
   } catch (err) {
     res.status(500).json({ error: 'Error inesperado al consultar el asistente' })
