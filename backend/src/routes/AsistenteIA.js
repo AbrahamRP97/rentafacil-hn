@@ -58,7 +58,7 @@ router.post('/consultar', async (req, res) => {
 
     // Si está saturado de demanda (u otro error), reintenta con un modelo de respaldo
     if (!resultado.ok) {
-      resultado = await consultarModelo(pregunta, 'gemini-2.5-flash')
+      resultado = await consultarModelo(pregunta, 'gemini-3.6-flash')
     }
 
     if (!resultado.ok) {
