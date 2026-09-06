@@ -41,6 +41,7 @@ function ContratoDigital() {
 
   useEffect(() => {
     cargarTodo()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id_contrato])
 
   const handleFirmar = async () => {
@@ -73,86 +74,180 @@ function ContratoDigital() {
   if (error && !contrato) return <p style={styles.mensaje}>{error}</p>
 
   const puedeFirmar = usuario?.rol === 'inquilino' && !contrato.terminos_aceptados
+  const propietarioInfo = propiedad?.PROPIETARIOS
+  const ubicacion = propiedad?.UBICACIONES
+  const numeroContrato = `RF-${String(contrato.id_contrato).padStart(6, '0')}`
+  const fechaGeneracion = new Date(contrato.created_at || Date.now()).toLocaleDateString('es-HN', {
+    day: 'numeric', month: 'long', year: 'numeric'
+  })
 
   return (
     <div style={styles.container}>
-      <div style={styles.accionesNoImprimir}>
+      <style>{`
+        @media print {
+          .no-imprimir { display: none !important; }
+          .documento-contrato {
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+          }
+          body { background: white !important; }
+        }
+      `}</style>
+
+      <div className="no-imprimir" style={styles.accionesNoImprimir}>
         <Link to={usuario?.rol === 'anfitrion' ? '/admin' : '/mis-reservas'} style={styles.volver}>
           ← Volver
         </Link>
         <button onClick={() => window.print()} style={styles.botonImprimir}>
-          🖨️ Imprimir / Guardar como PDF
+          🖨️ Descargar / Imprimir contrato (PDF)
         </button>
       </div>
 
-      <div style={styles.documento}>
-        <h1 style={styles.tituloDoc}>Contrato de Arrendamiento</h1>
-        <p style={styles.subtituloDoc}>RentaFácil HN — Contrato #{contrato.id_contrato}</p>
+      <div className="documento-contrato" style={styles.documento}>
+        <div style={styles.encabezado}>
+          <h1 style={styles.tituloDoc}>CONTRATO DE ARRENDAMIENTO DE BIEN INMUEBLE</h1>
+          <p style={styles.numeroContrato}>Contrato N.° {numeroContrato}</p>
+          <p style={styles.subtituloDoc}>Generado a través de la plataforma RentaFácil HN el {fechaGeneracion}</p>
+        </div>
 
-        <div style={styles.seccionDoc}>
-          <h3>Partes del contrato</h3>
-          <p><strong>Propietario (Arrendador):</strong> {propiedad?.PROPIETARIOS?.nombre} {propiedad?.PROPIETARIOS?.apellido} — {propiedad?.PROPIETARIOS?.email}</p>
-          <p><strong>Inquilino (Arrendatario):</strong> {inquilino?.nombre} {inquilino?.apellido} — {inquilino?.email}</p>
+        <div style={styles.introduccion}>
+          <p>
+            Conste por el presente documento el <strong>Contrato de Arrendamiento</strong> que celebran, por una parte,
+            quien en adelante se denominará <strong>EL ARRENDADOR</strong>, y por otra parte, quien en adelante se
+            denominará <strong>EL ARRENDATARIO</strong>, cuyos datos de identificación se detallan a continuación,
+            y quienes convienen en sujetarse a las cláusulas siguientes:
+          </p>
         </div>
 
         <div style={styles.seccionDoc}>
-          <h3>Propiedad arrendada</h3>
-          <p><strong>{propiedad?.titulo}</strong></p>
-          <p>{propiedad?.descripcion}</p>
+          <h3 style={styles.tituloSeccion}>I. IDENTIFICACIÓN DE LAS PARTES</h3>
+
+          <div style={styles.bloqueParte}>
+            <p style={styles.etiquetaParte}>EL ARRENDADOR</p>
+            <table style={styles.tablaDatos}>
+              <tbody>
+                <tr><td style={styles.tdLabel}>Nombre completo</td><td>{propietarioInfo?.nombre} {propietarioInfo?.apellido}</td></tr>
+                <tr><td style={styles.tdLabel}>DNI</td><td>{propietarioInfo?.dni || 'No registrado'}</td></tr>
+                <tr><td style={styles.tdLabel}>Correo electrónico</td><td>{propietarioInfo?.email}</td></tr>
+                <tr><td style={styles.tdLabel}>Teléfono</td><td>{propietarioInfo?.telefono || 'No registrado'}</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style={styles.bloqueParte}>
+            <p style={styles.etiquetaParte}>EL ARRENDATARIO</p>
+            <table style={styles.tablaDatos}>
+              <tbody>
+                <tr><td style={styles.tdLabel}>Nombre completo</td><td>{inquilino?.nombre} {inquilino?.apellido}</td></tr>
+                <tr><td style={styles.tdLabel}>DNI</td><td>{inquilino?.dni || 'No registrado'}</td></tr>
+                <tr><td style={styles.tdLabel}>Correo electrónico</td><td>{inquilino?.email}</td></tr>
+                <tr><td style={styles.tdLabel}>Teléfono</td><td>{inquilino?.telefono || 'No registrado'}</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div style={styles.seccionDoc}>
-          <h3>Términos económicos</h3>
-          <table style={styles.tablaTerminos}>
+          <h3 style={styles.tituloSeccion}>II. OBJETO DEL CONTRATO</h3>
+          <p style={styles.parrafoClausula}>
+            EL ARRENDADOR es propietario del inmueble identificado como <strong>"{propiedad?.titulo}"</strong>,
+            ubicado en {ubicacion?.direccion}, {ubicacion?.municipio}, {ubicacion?.departamento}, Honduras,
+            el cual da en arrendamiento a EL ARRENDATARIO bajo los términos y condiciones que se describen en
+            el presente contrato.
+          </p>
+          {propiedad?.descripcion && (
+            <p style={styles.parrafoClausula}><strong>Descripción del inmueble:</strong> {propiedad.descripcion}</p>
+          )}
+          <table style={styles.tablaDatos}>
             <tbody>
-              <tr>
-                <td style={styles.tdLabel}>Periodo de arrendamiento</td>
-                <td>{contrato.fecha_inicio} al {contrato.fecha_fin}</td>
-              </tr>
-              <tr>
-                <td style={styles.tdLabel}>Monto mensual</td>
-                <td>L. {contrato.monto_mensual}</td>
-              </tr>
-              <tr>
-                <td style={styles.tdLabel}>Depósito de garantía</td>
-                <td>L. {contrato.deposito}</td>
-              </tr>
+              <tr><td style={styles.tdLabel}>Tipo de propiedad</td><td style={{ textTransform: 'capitalize' }}>{propiedad?.tipo}</td></tr>
+              <tr><td style={styles.tdLabel}>Habitaciones</td><td>{propiedad?.habitaciones}</td></tr>
+              <tr><td style={styles.tdLabel}>Baños</td><td>{propiedad?.banos}</td></tr>
+              <tr><td style={styles.tdLabel}>Metros cuadrados</td><td>{propiedad?.metros_cuadrados} m²</td></tr>
             </tbody>
           </table>
         </div>
 
+        <div style={styles.seccionDoc}>
+          <h3 style={styles.tituloSeccion}>III. PLAZO DEL ARRENDAMIENTO</h3>
+          <p style={styles.parrafoClausula}>
+            El presente contrato tendrá vigencia desde el <strong>{contrato.fecha_inicio}</strong> hasta el{' '}
+            <strong>{contrato.fecha_fin}</strong>, fechas dentro de las cuales EL ARRENDATARIO gozará del uso
+            pacífico del inmueble descrito en la cláusula anterior.
+          </p>
+        </div>
+
+        <div style={styles.seccionDoc}>
+          <h3 style={styles.tituloSeccion}>IV. CONTRAPRESTACIÓN ECONÓMICA</h3>
+          <table style={styles.tablaDatos}>
+            <tbody>
+              <tr><td style={styles.tdLabel}>Monto de arrendamiento mensual</td><td>L. {contrato.monto_mensual}</td></tr>
+              <tr><td style={styles.tdLabel}>Depósito en garantía</td><td>L. {contrato.deposito}</td></tr>
+            </tbody>
+          </table>
+          <p style={styles.parrafoClausula}>
+            EL ARRENDATARIO se obliga a cancelar el monto mensual señalado dentro de los primeros cinco (5) días
+            de cada periodo, a través de los medios de pago habilitados en la plataforma RentaFácil HN
+            (transferencia bancaria, efectivo o tarjeta). El depósito en garantía responde por daños al inmueble
+            o incumplimientos del presente contrato, y será reembolsado al finalizar el arrendamiento, previa
+            inspección de la propiedad, siempre que no existan daños ni obligaciones pendientes.
+          </p>
+        </div>
+
         {contrato.instrucciones_checkin && (
           <div style={styles.seccionDoc}>
-            <h3>Instrucciones de check-in</h3>
+            <h3 style={styles.tituloSeccion}>V. INSTRUCCIONES DE ENTREGA (CHECK-IN)</h3>
             <p style={styles.textoInstrucciones}>{contrato.instrucciones_checkin}</p>
           </div>
         )}
 
         <div style={styles.seccionDoc}>
-          <h3>Términos y condiciones</h3>
-          <ol style={styles.listaTerminos}>
-            <li>El inquilino se compromete a pagar el monto mensual acordado en la fecha correspondiente durante todo el periodo del contrato.</li>
-            <li>El depósito de garantía cubre posibles daños a la propiedad y será reembolsado al finalizar el contrato, sujeto a inspección, salvo que existan daños o pagos pendientes.</li>
-            <li>El propietario se compromete a entregar la propiedad en las condiciones descritas y a respetar el periodo de arrendamiento acordado, salvo incumplimiento del inquilino.</li>
-            <li>Cualquier cancelación anticipada del contrato debe notificarse a través de la plataforma, y puede estar sujeta a la pérdida parcial o total del depósito, según lo acordado entre las partes.</li>
-            <li>El inquilino se compromete a dar buen uso a la propiedad y a reportar cualquier daño o desperfecto al propietario a través del chat interno de la plataforma.</li>
-            <li>Ambas partes aceptan que este documento, firmado digitalmente dentro de la plataforma RentaFácil HN, constituye un acuerdo de buena fe entre ambas partes.</li>
+          <h3 style={styles.tituloSeccion}>{contrato.instrucciones_checkin ? 'VI' : 'V'}. CLÁUSULAS GENERALES</h3>
+          <ol style={styles.listaClausulas}>
+            <li><strong>Primera — Del pago.</strong> EL ARRENDATARIO se compromete a cancelar puntualmente el monto mensual acordado durante toda la vigencia del contrato.</li>
+            <li><strong>Segunda — Del depósito.</strong> El depósito de garantía cubre daños ocasionados al inmueble y será reembolsado al finalizar el contrato, salvo que existan daños comprobados o pagos pendientes.</li>
+            <li><strong>Tercera — Del uso del inmueble.</strong> EL ARRENDATARIO se obliga a dar al inmueble un uso adecuado, absteniéndose de subarrendarlo total o parcialmente sin autorización expresa de EL ARRENDADOR.</li>
+            <li><strong>Cuarta — De las reparaciones.</strong> EL ARRENDATARIO deberá reportar cualquier daño o desperfecto del inmueble a través del canal de mensajería interno de la plataforma, a la brevedad posible.</li>
+            <li><strong>Quinta — De la cancelación anticipada.</strong> Cualquiera de las partes podrá solicitar la cancelación anticipada del presente contrato a través de la plataforma, pudiendo dicha cancelación implicar la pérdida parcial o total del depósito en garantía, según las circunstancias del caso.</li>
+            <li><strong>Sexta — De las obligaciones de EL ARRENDADOR.</strong> EL ARRENDADOR se obliga a entregar el inmueble en las condiciones descritas en este contrato y a respetar el plazo de arrendamiento pactado, salvo incumplimiento comprobado por parte de EL ARRENDATARIO.</li>
+            <li><strong>Séptima — De la aceptación digital.</strong> Ambas partes reconocen y aceptan que la firma digital realizada dentro de la plataforma RentaFácil HN —consistente en la identificación por nombre completo y aceptación expresa de los términos aquí descritos— constituye manifestación válida de voluntad y consentimiento respecto del contenido íntegro de este contrato.</li>
           </ol>
         </div>
 
         <div style={styles.seccionFirma}>
-          <h3>Firma digital</h3>
+          <h3 style={styles.tituloSeccion}>FIRMAS</h3>
 
-          {contrato.terminos_aceptados ? (
-            <div style={styles.firmaConfirmada}>
-              <p>✅ <strong>Firmado por:</strong> {contrato.nombre_firma}</p>
-              <p><strong>Fecha de aceptación:</strong> {new Date(contrato.fecha_aceptacion).toLocaleString('es-HN')}</p>
+          <div style={styles.bloquesFirma}>
+            <div style={styles.bloqueFirmaParte}>
+              <p style={styles.etiquetaParte}>EL ARRENDADOR</p>
+              <p style={styles.lineaFirma}>{propietarioInfo?.nombre} {propietarioInfo?.apellido}</p>
+              <p style={styles.notaFirma}>
+                Manifiesta su consentimiento mediante la aprobación de la solicitud de reserva dentro de la plataforma.
+              </p>
             </div>
-          ) : puedeFirmar ? (
-            <div style={styles.formFirma}>
+
+            <div style={styles.bloqueFirmaParte}>
+              <p style={styles.etiquetaParte}>EL ARRENDATARIO</p>
+              {contrato.terminos_aceptados ? (
+                <>
+                  <p style={styles.lineaFirma}>{contrato.nombre_firma}</p>
+                  <p style={styles.notaFirma}>
+                    Firmado digitalmente el {new Date(contrato.fecha_aceptacion).toLocaleString('es-HN')}
+                  </p>
+                </>
+              ) : (
+                <p style={styles.pendienteFirma}>⏳ Pendiente de firma</p>
+              )}
+            </div>
+          </div>
+
+          {!contrato.terminos_aceptados && puedeFirmar && (
+            <div className="no-imprimir" style={styles.formFirma}>
               {error && <p style={styles.error}>{error}</p>}
               <p style={styles.avisoFirma}>
-                Al firmar, confirmas que has leído y aceptas los términos y condiciones de este contrato.
+                Al firmar, EL ARRENDATARIO confirma que ha leído y acepta la totalidad de los términos y
+                condiciones descritos en este contrato.
               </p>
               <input
                 type="text"
@@ -174,8 +269,6 @@ function ContratoDigital() {
                 {firmando ? 'Firmando...' : 'Firmar contrato'}
               </button>
             </div>
-          ) : (
-            <p style={styles.pendienteFirma}>⏳ Este contrato aún no ha sido firmado por el inquilino.</p>
           )}
         </div>
       </div>
@@ -186,15 +279,16 @@ function ContratoDigital() {
 const styles = {
   container: {
     padding: '2rem',
-    fontFamily: 'sans-serif',
-    maxWidth: '750px',
+    fontFamily: "'Georgia', 'Times New Roman', serif",
+    maxWidth: '800px',
     margin: '0 auto'
   },
   accionesNoImprimir: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '1.5rem'
+    marginBottom: '1.5rem',
+    fontFamily: 'sans-serif'
   },
   volver: {
     color: '#1a1a2e',
@@ -212,64 +306,134 @@ const styles = {
   },
   documento: {
     backgroundColor: 'white',
-    borderRadius: '8px',
-    padding: '2.5rem',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+    borderRadius: '4px',
+    padding: '3rem',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+    border: '1px solid #ddd'
+  },
+  encabezado: {
+    textAlign: 'center',
+    borderBottom: '2px solid #1a1a2e',
+    paddingBottom: '1.2rem',
+    marginBottom: '1.8rem'
   },
   tituloDoc: {
-    fontSize: '1.6rem',
+    fontSize: '1.4rem',
     color: '#1a1a2e',
-    marginBottom: '0.2rem',
-    textAlign: 'center'
+    marginBottom: '0.5rem',
+    letterSpacing: '0.5px'
+  },
+  numeroContrato: {
+    fontSize: '0.9rem',
+    color: '#555',
+    fontWeight: 'bold',
+    margin: '0.3rem 0'
   },
   subtituloDoc: {
-    textAlign: 'center',
     color: '#888',
-    marginBottom: '2rem',
-    fontSize: '0.9rem'
+    fontSize: '0.8rem',
+    margin: 0
+  },
+  introduccion: {
+    marginBottom: '1.8rem',
+    color: '#222',
+    fontSize: '0.95rem',
+    lineHeight: 1.8,
+    textAlign: 'justify'
   },
   seccionDoc: {
-    marginBottom: '1.5rem',
-    color: '#333',
+    marginBottom: '1.8rem',
+    color: '#222',
     fontSize: '0.95rem',
-    lineHeight: 1.6
+    lineHeight: 1.7
   },
-  tablaTerminos: {
+  tituloSeccion: {
+    fontSize: '1rem',
+    color: '#1a1a2e',
+    borderBottom: '1px solid #ccc',
+    paddingBottom: '0.4rem',
+    marginBottom: '0.8rem',
+    letterSpacing: '0.3px'
+  },
+  bloqueParte: {
+    marginBottom: '1.2rem'
+  },
+  etiquetaParte: {
+    fontWeight: 'bold',
+    fontSize: '0.85rem',
+    color: '#e94560',
+    letterSpacing: '0.5px',
+    marginBottom: '0.4rem'
+  },
+  tablaDatos: {
     width: '100%',
     borderCollapse: 'collapse',
-    marginTop: '0.5rem'
+    fontSize: '0.9rem'
   },
   tdLabel: {
     fontWeight: 'bold',
-    padding: '0.4rem 0',
+    padding: '0.35rem 0',
     width: '45%',
-    color: '#555'
+    color: '#555',
+    verticalAlign: 'top'
+  },
+  parrafoClausula: {
+    textAlign: 'justify',
+    marginBottom: '0.8rem'
   },
   textoInstrucciones: {
     backgroundColor: '#f9f9f9',
     padding: '1rem',
-    borderRadius: '6px',
-    whiteSpace: 'pre-wrap'
+    borderRadius: '4px',
+    whiteSpace: 'pre-wrap',
+    fontSize: '0.9rem',
+    border: '1px solid #eee'
   },
-  listaTerminos: {
+  listaClausulas: {
     paddingLeft: '1.2rem',
-    lineHeight: 1.7
+    lineHeight: 1.8,
+    textAlign: 'justify',
+    fontSize: '0.9rem'
   },
   seccionFirma: {
-    borderTop: '2px solid #eee',
+    borderTop: '2px solid #1a1a2e',
     paddingTop: '1.5rem',
-    marginTop: '1.5rem'
+    marginTop: '2rem'
   },
-  firmaConfirmada: {
-    backgroundColor: '#e0ffe0',
-    padding: '1rem',
-    borderRadius: '6px',
-    color: '#28a745'
+  bloquesFirma: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '2rem',
+    marginTop: '1rem',
+    marginBottom: '1.5rem'
+  },
+  bloqueFirmaParte: {
+    textAlign: 'center',
+    borderTop: '1px solid #999',
+    paddingTop: '0.6rem'
+  },
+  lineaFirma: {
+    fontWeight: 'bold',
+    margin: '0.3rem 0',
+    fontFamily: "'Brush Script MT', cursive",
+    fontStyle: 'italic',
+    fontSize: '1.3rem'
+  },
+  notaFirma: {
+    fontSize: '0.75rem',
+    color: '#888',
+    margin: 0
+  },
+  pendienteFirma: {
+    color: '#ffc107',
+    fontWeight: 'bold',
+    fontSize: '0.9rem'
   },
   formFirma: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.8rem'
+    gap: '0.8rem',
+    fontFamily: 'sans-serif'
   },
   avisoFirma: {
     fontSize: '0.85rem',
@@ -279,7 +443,8 @@ const styles = {
     padding: '0.7rem 1rem',
     borderRadius: '4px',
     border: '1px solid #ddd',
-    fontSize: '1rem'
+    fontSize: '1rem',
+    fontFamily: 'sans-serif'
   },
   checkboxFirma: {
     display: 'flex',
@@ -296,10 +461,6 @@ const styles = {
     fontWeight: 'bold',
     cursor: 'pointer',
     fontSize: '1rem'
-  },
-  pendienteFirma: {
-    color: '#ffc107',
-    fontWeight: 'bold'
   },
   error: {
     backgroundColor: '#ffe0e0',
