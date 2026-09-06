@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getPropiedad, getReservas, createReserva, getInquilinoPorAuth } from '../services/api'
 import CalendarioDisponibilidad from '../components/CalendarioDisponibilidad'
+import MapaPropiedades from '../components/MapaPropiedades'
 
 const ESTADOS_OCUPADOS = ['pendiente', 'aprobada']
 
@@ -192,6 +193,9 @@ function DetallePropiedades() {
           <div style={styles.ubicacion}>
             <h3>Ubicación</h3>
             <p>📍 {propiedad.UBICACIONES.direccion}, {propiedad.UBICACIONES.municipio}, {propiedad.UBICACIONES.departamento}</p>
+            {propiedad.UBICACIONES.latitud && propiedad.UBICACIONES.longitud && (
+              <MapaPropiedades propiedades={[propiedad]} alturaMapa="300px" />
+            )}
           </div>
         )}
 
