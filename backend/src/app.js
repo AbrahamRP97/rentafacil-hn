@@ -16,6 +16,7 @@ import transaccionesRouter  from './routes/transacciones.js'
 import mensajesRouter       from './routes/mensajes.js'
 import comprobantesRouter   from './routes/comprobantes.js'
 import pagosStripeRouter    from './routes/pagosStripe.js'
+import asistenteIARouter    from './routes/AsistenteIA.js'
 
 dotenv.config()
 
@@ -37,6 +38,7 @@ app.use('/api/transacciones', transaccionesRouter)
 app.use('/api/mensajes',      mensajesRouter)
 app.use('/api/comprobantes',  comprobantesRouter)
 app.use('/api/pagos-stripe',  pagosStripeRouter)
+app.use('/api/asistente',     asistenteIARouter)
 
 app.get('/', (req, res) => {
   res.json({ message: 'RentaFácil HN API funcionando ✅' })

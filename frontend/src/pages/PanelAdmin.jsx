@@ -646,6 +646,9 @@ function PanelAdmin() {
           <Link to="/admin/consultas-avanzadas" style={styles.botonConsulta}>
             Consultas avanzadas
           </Link>
+          <Link to="/admin/asistente-ia" style={styles.botonConsulta}>
+            🤖 Asistente IA
+          </Link>
           <button
             onClick={() => { setMostrarFormulario(!mostrarFormulario); setError(null) }}
             style={styles.botonAgregar}
