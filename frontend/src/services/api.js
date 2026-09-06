@@ -42,6 +42,9 @@ export const uploadImagen = (formData) =>
   })
 export const setImagenPortada = (id_imagen) => api.put(`/imagenes/${id_imagen}/portada`)
 
+export const getCalificaciones = () => api.get('/calificaciones')
+export const createCalificacion = (data) => api.post('/calificaciones', data)
+
 export const getConsultasAvanzadas = () => api.get('/consultas-avanzadas')
 export const runConsultaAvanzada = (id) => api.get(`/consultas-avanzadas/${id}`)
 export const aprobarReserva = (data) => api.post('/transacciones/aprobar-reserva', data)

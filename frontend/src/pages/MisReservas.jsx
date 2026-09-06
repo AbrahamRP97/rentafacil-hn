@@ -3,7 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getInquilinoPorAuth, getReservas, getContratos, getPagos,
   registrarPago, cancelarContrato, enviarMensaje,
-  subirComprobante, crearSesionPago, verificarSesionPago } from '../services/api'
+  subirComprobante, crearSesionPago, verificarSesionPago, createCalificacion } from '../services/api'
 
 function MisReservas() {
   const { usuario } = useAuth()
@@ -20,6 +20,8 @@ function MisReservas() {
 
   const [formPago, setFormPago] = useState({})
   const [archivoComprobante, setArchivoComprobante] = useState({})
+  const [formCalificacion, setFormCalificacion] = useState({})
+  const [enviandoCalificacion, setEnviandoCalificacion] = useState(null)
 
   useEffect(() => {
     if (!usuario) return
@@ -186,6 +188,46 @@ function MisReservas() {
     }
   }
 
+  const handleCambiarPuntuacion = (id_contrato, puntuacion) => {
+    setFormCalificacion({
+      ...formCalificacion,
+      [id_contrato]: { ...formCalificacion[id_contrato], puntuacion }
+    })
+  }
+
+  const handleCambiarComentario = (id_contrato, comentario) => {
+    setFormCalificacion({
+      ...formCalificacion,
+      [id_contrato]: { ...formCalificacion[id_contrato], comentario }
+    })
+  }
+
+  const handleEnviarCalificacion = async (id_contrato) => {
+    const datos = formCalificacion[id_contrato] || {}
+    if (!datos.puntuacion) {
+      setError('Selecciona una puntuación antes de enviar tu calificación')
+      return
+    }
+
+    setEnviandoCalificacion(id_contrato)
+    setError(null)
+    try {
+      await createCalificacion({
+        id_contrato,
+        tipo_autor: 'inquilino',
+        puntuacion: datos.puntuacion,
+        comentario: datos.comentario || null
+      })
+      setExito('¡Gracias por tu calificación!')
+      cargarDatos()
+      setTimeout(() => setExito(null), 3000)
+    } catch (err) {
+      setError('Error al enviar la calificación. Intenta de nuevo.')
+    } finally {
+      setEnviandoCalificacion(null)
+    }
+  }
+
   return (
     <div style={styles.container}>
       <h2 style={styles.titulo}>Mis reservas</h2>
@@ -299,9 +341,60 @@ function MisReservas() {
                   </div>
                 )}
 
-                {r.contrato && r.contrato.estado === 'cancelado' && (
-                  <p style={styles.avisoCancelado}>Este contrato fue cancelado.</p>
-                )}
+                {r.contrato && r.contrato.estado === 'cancelado' && (() => {
+                  const miCalificacion = r.contrato.CALIFICACIONES?.find(c => c.tipo_autor === 'inquilino')
+                  const calificacionPropietario = r.contrato.CALIFICACIONES?.find(c => c.tipo_autor === 'propietario')
+                  const puntuacionSeleccionada = formCalificacion[r.contrato.id_contrato]?.puntuacion || 0
+
+                  return (
+                    <div style={styles.bloqueCalificacion}>
+                      <p style={styles.avisoCancelado}>Este contrato fue cancelado.</p>
+
+                      {calificacionPropietario && (
+                        <p style={styles.calificacionRecibida}>
+                          El propietario te calificó: {'★'.repeat(calificacionPropietario.puntuacion)}{'☆'.repeat(5 - calificacionPropietario.puntuacion)}
+                          {calificacionPropietario.comentario && ` — "${calificacionPropietario.comentario}"`}
+                        </p>
+                      )}
+
+                      {miCalificacion ? (
+                        <p style={styles.calificacionEnviada}>
+                          Tu calificación: {'★'.repeat(miCalificacion.puntuacion)}{'☆'.repeat(5 - miCalificacion.puntuacion)}
+                          {miCalificacion.comentario && ` — "${miCalificacion.comentario}"`}
+                        </p>
+                      ) : (
+                        <div style={styles.formCalificar}>
+                          <p style={styles.tituloCalificar}>¿Cómo fue tu experiencia con este propietario?</p>
+                          <div style={styles.estrellas}>
+                            {[1, 2, 3, 4, 5].map(n => (
+                              <button
+                                key={n}
+                                type="button"
+                                onClick={() => handleCambiarPuntuacion(r.contrato.id_contrato, n)}
+                                style={styles.botonEstrella}
+                              >
+                                {n <= puntuacionSeleccionada ? '★' : '☆'}
+                              </button>
+                            ))}
+                          </div>
+                          <textarea
+                            placeholder="Comentario (opcional)"
+                            value={formCalificacion[r.contrato.id_contrato]?.comentario || ''}
+                            onChange={(e) => handleCambiarComentario(r.contrato.id_contrato, e.target.value)}
+                            style={styles.textareaCalificar}
+                          />
+                          <button
+                            onClick={() => handleEnviarCalificacion(r.contrato.id_contrato)}
+                            style={styles.botonEnviarCalificacion}
+                            disabled={enviandoCalificacion === r.contrato.id_contrato}
+                          >
+                            {enviandoCalificacion === r.contrato.id_contrato ? 'Enviando...' : 'Enviar calificación'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
             )
           })}
@@ -432,6 +525,68 @@ const styles = {
     fontSize: '0.85rem',
     fontWeight: 'bold',
     marginTop: '0.5rem'
+  },
+  bloqueCalificacion: {
+    marginTop: '0.5rem',
+    borderTop: '1px solid #eee',
+    paddingTop: '0.8rem'
+  },
+  calificacionRecibida: {
+    fontSize: '0.85rem',
+    color: '#555',
+    backgroundColor: '#f9f9f9',
+    padding: '0.6rem 0.8rem',
+    borderRadius: '6px',
+    margin: '0.5rem 0'
+  },
+  calificacionEnviada: {
+    fontSize: '0.85rem',
+    color: '#28a745',
+    margin: '0.5rem 0'
+  },
+  formCalificar: {
+    marginTop: '0.6rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.6rem'
+  },
+  tituloCalificar: {
+    fontSize: '0.85rem',
+    color: '#555',
+    margin: 0,
+    fontWeight: 'bold'
+  },
+  estrellas: {
+    display: 'flex',
+    gap: '0.3rem'
+  },
+  botonEstrella: {
+    background: 'none',
+    border: 'none',
+    fontSize: '1.6rem',
+    color: '#ffc107',
+    cursor: 'pointer',
+    padding: 0,
+    lineHeight: 1
+  },
+  textareaCalificar: {
+    padding: '0.6rem 0.8rem',
+    borderRadius: '4px',
+    border: '1px solid #ddd',
+    fontSize: '0.85rem',
+    minHeight: '60px',
+    resize: 'vertical'
+  },
+  botonEnviarCalificacion: {
+    padding: '0.5rem 1rem',
+    backgroundColor: '#1a1a2e',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    fontSize: '0.85rem',
+    alignSelf: 'flex-start'
   },
   error: {
     backgroundColor: '#ffe0e0',

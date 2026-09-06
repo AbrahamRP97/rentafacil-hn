@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getPropiedades, getReservas, getContratos, getPagos, createPropiedad,
   getImagenes, uploadImagen, deleteImagen, setImagenPortada, getPropietarioPorAuth,
-  aprobarReserva, updateReserva, enviarMensaje, cancelarContrato, createUbicacion } from '../services/api'
+  aprobarReserva, updateReserva, enviarMensaje, cancelarContrato, createUbicacion,
+  createCalificacion } from '../services/api'
 
 function PanelAdmin() {
   const { usuario } = useAuth()
@@ -25,6 +26,10 @@ function PanelAdmin() {
   const [procesandoReserva, setProcesandoReserva] = useState(null)
   const [mostrarHistorialPagos, setMostrarHistorialPagos] = useState(false)
   const [mostrarContratos, setMostrarContratos] = useState(false)
+  const [contratoACalificar, setContratoACalificar] = useState(null)
+  const [puntuacionCalificar, setPuntuacionCalificar] = useState(0)
+  const [comentarioCalificar, setComentarioCalificar] = useState('')
+  const [enviandoCalificacion, setEnviandoCalificacion] = useState(false)
 
   const [loading, setLoading] = useState(true)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
@@ -291,6 +296,35 @@ function PanelAdmin() {
     }
   }
 
+  const handleAbrirCalificar = (id_contrato) => {
+    setContratoACalificar(id_contrato)
+    setPuntuacionCalificar(0)
+    setComentarioCalificar('')
+  }
+
+  const handleEnviarCalificacion = async () => {
+    if (!puntuacionCalificar) {
+      setError('Selecciona una puntuación antes de enviar')
+      return
+    }
+    setEnviandoCalificacion(true)
+    setError(null)
+    try {
+      await createCalificacion({
+        id_contrato: contratoACalificar,
+        tipo_autor: 'propietario',
+        puntuacion: puntuacionCalificar,
+        comentario: comentarioCalificar || null
+      })
+      setContratoACalificar(null)
+      cargarDatos()
+    } catch (err) {
+      setError('Error al enviar la calificación. Intenta de nuevo.')
+    } finally {
+      setEnviandoCalificacion(false)
+    }
+  }
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
@@ -516,7 +550,7 @@ function PanelAdmin() {
                       </span>
                     </td>
                     <td style={styles.td}>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                         <Link to={`/contrato/${c.id_contrato}`} style={styles.botonImagenes}>
                           Ver contrato
                         </Link>
@@ -528,6 +562,21 @@ function PanelAdmin() {
                           >
                             {procesandoReserva === c.id_contrato ? '...' : 'Cancelar'}
                           </button>
+                        )}
+                        {c.estado === 'cancelado' && (
+                          c.CALIFICACIONES?.find(cal => cal.tipo_autor === 'propietario') ? (
+                            <span style={styles.calificacionYaEnviada}>
+                              {'★'.repeat(c.CALIFICACIONES.find(cal => cal.tipo_autor === 'propietario').puntuacion)}
+                              {'☆'.repeat(5 - c.CALIFICACIONES.find(cal => cal.tipo_autor === 'propietario').puntuacion)}
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleAbrirCalificar(c.id_contrato)}
+                              style={styles.botonImagenes}
+                            >
+                              ⭐ Calificar inquilino
+                            </button>
+                          )
                         )}
                       </div>
                     </td>
@@ -858,6 +907,48 @@ function PanelAdmin() {
             </div>
           </div>
         )}
+
+        {/* Modal de calificación */}
+        {contratoACalificar && (
+          <div style={styles.modalOverlay}>
+            <div style={{ ...styles.modal, maxWidth: '400px' }}>
+              <div style={styles.modalHeader}>
+                <h3 style={styles.modalTitulo}>⭐ Calificar al inquilino</h3>
+                <button onClick={() => setContratoACalificar(null)} style={styles.botonCerrar}>✕</button>
+              </div>
+
+              {error && <p style={styles.error}>{error}</p>}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setPuntuacionCalificar(n)}
+                      style={{ background: 'none', border: 'none', fontSize: '2rem', color: '#ffc107', cursor: 'pointer', padding: 0 }}
+                    >
+                      {n <= puntuacionCalificar ? '★' : '☆'}
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  placeholder="Comentario (opcional)"
+                  value={comentarioCalificar}
+                  onChange={(e) => setComentarioCalificar(e.target.value)}
+                  style={styles.textarea}
+                />
+                <button
+                  onClick={handleEnviarCalificacion}
+                  style={styles.botonGuardar}
+                  disabled={enviandoCalificacion}
+                >
+                  {enviandoCalificacion ? 'Enviando...' : 'Enviar calificación'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   )
 }
@@ -1027,6 +1118,11 @@ const styles = {
     flechaToggle: {
       color: '#888',
       fontSize: '0.9rem'
+    },
+    calificacionYaEnviada: {
+      fontSize: '0.9rem',
+      color: '#ffc107',
+      alignSelf: 'center'
     },
     inputDeposito: {
       width: '100px',
