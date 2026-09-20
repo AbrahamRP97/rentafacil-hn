@@ -9,8 +9,7 @@ router.get('/', async (req, res) => {
   res.json(data)
 })
 
-// IMPORTANTE: esta ruta va antes de '/:id' — si no, Express interpretaría
-// "auth" como si fuera un id_propietario y nunca llegaría aquí.
+
 router.get('/auth/:auth_user_id', async (req, res) => {
   const { data, error } = await supabase
     .from('propietarios')
