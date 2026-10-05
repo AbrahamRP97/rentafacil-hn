@@ -45,7 +45,6 @@ function Registro() {
 
     setCargando(true)
 
-    // Paso 1: crear el usuario en Supabase Auth
     const { error: errorRegistro, data } = await registrar({
       email: form.email,
       password: form.password,
@@ -63,7 +62,6 @@ function Registro() {
       return
     }
 
-    // Paso 2: crear el registro real en propietarios o inquilinos, ligado al usuario recién creado
     try {
       const datosPerfil = {
         nombre: form.nombre,

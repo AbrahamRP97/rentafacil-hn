@@ -3,7 +3,6 @@ import { supabase } from '../services/supabaseClient'
 
 const AuthContext = createContext()
 
-// Convierte el usuario de Supabase Auth al formato que ya usa el resto de la app
 function mapUsuario(supabaseUser) {
   if (!supabaseUser) return null
   return {

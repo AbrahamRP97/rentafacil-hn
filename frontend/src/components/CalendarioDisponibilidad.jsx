@@ -6,7 +6,7 @@ const MESES = [
 ]
 const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
-// Estados de reserva que bloquean el calendario (ocupan fechas)
+
 const ESTADOS_OCUPADOS = ['pendiente', 'aprobada']
 
 function fechaEnRango(fecha, inicio, fin) {
