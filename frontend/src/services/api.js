@@ -71,6 +71,9 @@ export const subirComprobante = (formData) =>
 export const crearSesionPago = (data) => api.post('/pagos-stripe/crear-sesion', data)
 export const verificarSesionPago = (data) => api.post('/pagos-stripe/verificar-sesion', data)
 
+// Cotización de precios dinámicos
+export const cotizarEstadia = (data) => api.post('/precios/cotizar', data)
+
 // Asistente de IA (gestión de proyectos)
 export const consultarAsistente = (pregunta) => api.post('/asistente/consultar', { pregunta })
 

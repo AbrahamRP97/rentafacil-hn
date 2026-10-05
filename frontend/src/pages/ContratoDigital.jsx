@@ -77,6 +77,8 @@ function ContratoDigital() {
   const propietarioInfo = propiedad?.PROPIETARIOS
   const ubicacion = propiedad?.UBICACIONES
   const numeroContrato = `RF-${String(contrato.id_contrato).padStart(6, '0')}`
+  const nochesEstadia = Math.round((new Date(contrato.fecha_fin) - new Date(contrato.fecha_inicio)) / 86400000)
+  const esEstadiaCorta = contrato.monto_total != null && nochesEstadia < 28
   const fechaGeneracion = new Date(contrato.created_at || Date.now()).toLocaleDateString('es-HN', {
     day: 'numeric', month: 'long', year: 'numeric'
   })
@@ -182,14 +184,21 @@ function ContratoDigital() {
           <h3 style={styles.tituloSeccion}>IV. CONTRAPRESTACIÓN ECONÓMICA</h3>
           <table style={styles.tablaDatos}>
             <tbody>
-              <tr><td style={styles.tdLabel}>Monto de arrendamiento mensual</td><td>L. {contrato.monto_mensual}</td></tr>
+              {contrato.monto_total != null && (
+                <>
+                  <tr><td style={styles.tdLabel}>Duración de la estadía</td><td>{nochesEstadia} noche(s)</td></tr>
+                  <tr><td style={styles.tdLabel}>Total de la estadía</td><td>L. {contrato.monto_total}</td></tr>
+                </>
+              )}
+              <tr><td style={styles.tdLabel}>Renta mensual de la propiedad</td><td>L. {contrato.monto_mensual}</td></tr>
               <tr><td style={styles.tdLabel}>Depósito en garantía</td><td>L. {contrato.deposito}</td></tr>
             </tbody>
           </table>
           <p style={styles.parrafoClausula}>
-            EL ARRENDATARIO se obliga a cancelar el monto mensual señalado dentro de los primeros cinco (5) días
-            de cada periodo, a través de los medios de pago habilitados en la plataforma RentaFácil HN
-            (transferencia bancaria, efectivo o tarjeta). El depósito en garantía responde por daños al inmueble
+            {esEstadiaCorta
+              ? 'EL ARRENDATARIO se obliga a cancelar el total de la estadía señalado, a través de los medios de pago habilitados en la plataforma RentaFácil HN (transferencia bancaria, efectivo o tarjeta). '
+              : 'EL ARRENDATARIO se obliga a cancelar el monto mensual señalado dentro de los primeros cinco (5) días de cada periodo, a través de los medios de pago habilitados en la plataforma RentaFácil HN (transferencia bancaria, efectivo o tarjeta). '}
+            El depósito en garantía responde por daños al inmueble
             o incumplimientos del presente contrato, y será reembolsado al finalizar el arrendamiento, previa
             inspección de la propiedad, siempre que no existan daños ni obligaciones pendientes.
           </p>

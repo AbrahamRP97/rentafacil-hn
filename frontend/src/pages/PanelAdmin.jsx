@@ -50,6 +50,8 @@ function PanelAdmin() {
     metros_cuadrados: '',
     tipo: 'apartamento',
     estado: 'disponible',
+    acepta_estadias_cortas: true,
+    estancia_minima_noches: '1',
     departamento: '',
     municipio: '',
     direccion: ''
@@ -85,8 +87,7 @@ function PanelAdmin() {
     }).catch(() => setLoading(false))
   }
 
-  // Cruza propiedades -> reservas -> contratos -> pagos, todo filtrado
-  // al propietario que inició sesión
+
   useEffect(() => {
     if (!propietarioActual) {
       setPropiedadesPropias([])
@@ -343,6 +344,12 @@ function PanelAdmin() {
       return
     }
 
+    const estanciaMinima = parseInt(form.estancia_minima_noches)
+    if (!estanciaMinima || estanciaMinima < 1) {
+      setError('La estancia mínima debe ser de al menos 1 noche')
+      return
+    }
+
     try {
       // Primero se crea la ubicación real que escribió el propietario
       const resUbicacion = await createUbicacion({
@@ -360,6 +367,8 @@ function PanelAdmin() {
         habitaciones:     parseInt(form.habitaciones),
         banos:            parseInt(form.banos),
         metros_cuadrados: parseFloat(form.metros_cuadrados),
+        acepta_estadias_cortas: form.acepta_estadias_cortas,
+        estancia_minima_noches: estanciaMinima,
         id_propietario:   propietarioActual.id_propietario,
         id_ubicacion:     idNuevaUbicacion
       })
@@ -384,6 +393,7 @@ function PanelAdmin() {
         titulo: '', descripcion: '', precio_mensual: '',
         habitaciones: '', banos: '', metros_cuadrados: '',
         tipo: 'apartamento', estado: 'disponible',
+        acepta_estadias_cortas: true, estancia_minima_noches: '1',
         departamento: '', municipio: '', direccion: ''
       })
       imagenesNuevas.forEach(img => URL.revokeObjectURL(img.previewUrl))
@@ -526,7 +536,7 @@ function PanelAdmin() {
                   <th style={styles.th}>Inquilino</th>
                   <th style={styles.th}>Del</th>
                   <th style={styles.th}>Al</th>
-                  <th style={styles.th}>Monto/mes</th>
+                  <th style={styles.th}>Monto</th>
                   <th style={styles.th}>Depósito</th>
                   <th style={styles.th}>Estado</th>
                   <th style={styles.th}>Acción</th>
@@ -539,7 +549,9 @@ function PanelAdmin() {
                     <td style={styles.td}>{c.reserva?.INQUILINOS?.nombre} {c.reserva?.INQUILINOS?.apellido}</td>
                     <td style={styles.td}>{c.fecha_inicio}</td>
                     <td style={styles.td}>{c.fecha_fin}</td>
-                    <td style={styles.td}>L. {c.monto_mensual}</td>
+                    <td style={styles.td}>
+                      {c.monto_total != null ? `L. ${c.monto_total}` : `L. ${c.monto_mensual} / mes`}
+                    </td>
                     <td style={styles.td}>L. {c.deposito}</td>
                     <td style={styles.td}>
                       <span style={{
@@ -685,7 +697,7 @@ function PanelAdmin() {
 
             <div style={styles.fila}>
               <div style={styles.campo}>
-                <label style={styles.label}>Precio mensual (L.) *</label>
+                <label style={styles.label}>Renta mensual que deseas recibir (L.) *</label>
                 <input type="number" name="precio_mensual" value={form.precio_mensual} onChange={handleChange} placeholder="5000" style={styles.input} />
               </div>
               <div style={styles.campo}>
@@ -695,6 +707,32 @@ function PanelAdmin() {
                   <option value="alquilado">Alquilado</option>
                   <option value="reservado">Reservado</option>
                 </select>
+              </div>
+            </div>
+
+            <div style={styles.bloqueEstadias}>
+              <p style={styles.tituloEstadias}>Estadías cortas</p>
+              <p style={styles.textoEstadias}>
+                A partir de tu renta mensual, el sistema calcula automáticamente el precio por noche
+                {form.precio_mensual && parseFloat(form.precio_mensual) > 0
+                  ? ` (tarifa base: L. ${(parseFloat(form.precio_mensual) / 30).toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} por noche, renta mensual ÷ 30)`
+                  : ''}.
+                Las estadías cortas llevan un recargo automático; las de 28 noches o más se prorratean sobre tu renta mensual.
+              </p>
+              <div style={styles.fila}>
+                <div style={styles.checkEstadias}>
+                  <input
+                    type="checkbox"
+                    id="aceptaCortas"
+                    checked={form.acepta_estadias_cortas}
+                    onChange={(e) => setForm({ ...form, acepta_estadias_cortas: e.target.checked })}
+                  />
+                  <label htmlFor="aceptaCortas" style={styles.label}>Acepto estadías de menos de 28 noches</label>
+                </div>
+                <div style={styles.campo}>
+                  <label style={styles.label}>Estancia mínima (noches)</label>
+                  <input type="number" min="1" name="estancia_minima_noches" value={form.estancia_minima_noches} onChange={handleChange} style={styles.input} />
+                </div>
               </div>
             </div>
 
@@ -1126,6 +1164,30 @@ const styles = {
       fontSize: '0.9rem',
       color: '#ffc107',
       alignSelf: 'center'
+    },
+    bloqueEstadias: {
+      backgroundColor: '#fff',
+      border: '1px solid #eee',
+      borderRadius: '8px',
+      padding: '1rem 1.2rem',
+      marginBottom: '1rem'
+    },
+    tituloEstadias: {
+      margin: '0 0 0.3rem 0',
+      fontWeight: 'bold',
+      color: '#1a1a2e',
+      fontSize: '0.95rem'
+    },
+    textoEstadias: {
+      margin: '0 0 0.8rem 0',
+      fontSize: '0.82rem',
+      color: '#666',
+      lineHeight: 1.5
+    },
+    checkEstadias: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.5rem'
     },
     inputDeposito: {
       width: '100px',

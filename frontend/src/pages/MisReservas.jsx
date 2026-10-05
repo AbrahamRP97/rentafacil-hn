@@ -260,7 +260,11 @@ function MisReservas() {
 
                 {r.contrato && r.contrato.estado === 'activo' && (
                   <div style={styles.detalleContrato}>
-                    <p style={styles.lineaDetalle}>Monto mensual: L. {r.contrato.monto_mensual}</p>
+                    {r.contrato.monto_total != null ? (
+                      <p style={styles.lineaDetalle}>Total de la estadía: L. {r.contrato.monto_total}</p>
+                    ) : (
+                      <p style={styles.lineaDetalle}>Monto mensual: L. {r.contrato.monto_mensual}</p>
+                    )}
                     <p style={styles.lineaDetalle}>Depósito requerido: L. {r.contrato.deposito}</p>
                     <p style={styles.lineaDetalle}>Total pagado: L. {r.totalPagado.toFixed(2)}</p>
 

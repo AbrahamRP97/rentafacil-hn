@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getPropiedad, getReservas, createReserva, getInquilinoPorAuth } from '../services/api'
+import { getPropiedad, getReservas, createReserva, getInquilinoPorAuth, cotizarEstadia } from '../services/api'
 import CalendarioDisponibilidad from '../components/CalendarioDisponibilidad'
 import MapaPropiedades from '../components/MapaPropiedades'
 
@@ -13,6 +13,15 @@ function fechasSeSolapan(inicioA, finA, inicioB, finB) {
   const b1 = new Date(inicioB).setHours(0, 0, 0, 0)
   const b2 = new Date(finB).setHours(0, 0, 0, 0)
   return a1 <= b2 && a2 >= b1
+}
+
+const formatearMonto = (n) =>
+  Number(n).toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+const ETIQUETAS_ESTADIA = {
+  corta: 'Estadía corta',
+  semanal: 'Estadía semanal',
+  mensual: 'Estadía mensual'
 }
 
 function DetallePropiedades() {
@@ -31,6 +40,10 @@ function DetallePropiedades() {
   const [errorReserva, setErrorReserva] = useState(null)
   const [exitoReserva, setExitoReserva] = useState(false)
   const [enviandoReserva, setEnviandoReserva] = useState(false)
+
+  const [cotizacion, setCotizacion] = useState(null)
+  const [errorCotizacion, setErrorCotizacion] = useState(null)
+  const [cotizando, setCotizando] = useState(false)
 
   useEffect(() => {
     getPropiedad(id)
@@ -62,6 +75,33 @@ function DetallePropiedades() {
     }
   }, [usuario])
 
+  // Cotización en vivo: cada vez que cambian las fechas se pide el precio al backend
+
+  useEffect(() => {
+    setCotizacion(null)
+    setErrorCotizacion(null)
+
+    const { fecha_inicio, fecha_fin } = formReserva
+    if (!fecha_inicio || !fecha_fin) return
+    if (new Date(fecha_fin) <= new Date(fecha_inicio)) {
+      setErrorCotizacion('La fecha de fin debe ser posterior a la fecha de inicio')
+      return
+    }
+
+    let cancelado = false
+    setCotizando(true)
+    cotizarEstadia({ id_propiedad: parseInt(id), fecha_inicio, fecha_fin })
+      .then(res => { if (!cancelado) setCotizacion(res.data) })
+      .catch(err => {
+        if (!cancelado) {
+          setErrorCotizacion(err.response?.data?.error || 'No se pudo calcular el precio')
+        }
+      })
+      .finally(() => { if (!cancelado) setCotizando(false) })
+
+    return () => { cancelado = true }
+  }, [formReserva.fecha_inicio, formReserva.fecha_fin, id])
+
   const handleChangeReserva = (e) => {
     setFormReserva({ ...formReserva, [e.target.name]: e.target.value })
   }
@@ -86,6 +126,16 @@ function DetallePropiedades() {
 
     if (haySolape) {
       setErrorReserva('Esas fechas ya están ocupadas o pendientes de aprobación. Revisa el calendario.')
+      return
+    }
+
+    if (errorCotizacion) {
+      setErrorReserva(errorCotizacion)
+      return
+    }
+
+    if (!cotizacion) {
+      setErrorReserva('Espera a que se calcule el precio de tu estadía e intenta de nuevo')
       return
     }
 
@@ -158,6 +208,16 @@ function DetallePropiedades() {
 
         <h2 style={styles.titulo}>{propiedad.titulo}</h2>
         <p style={styles.precio}>L. {propiedad.precio_mensual} / mes</p>
+        {(propiedad.acepta_estadias_cortas === false || propiedad.estancia_minima_noches > 1) && (
+          <p style={styles.reglasEstadia}>
+            {propiedad.acepta_estadias_cortas === false
+              ? 'Solo estadías de 28 noches o más. '
+              : ''}
+            {propiedad.estancia_minima_noches > 1
+              ? `Estancia mínima: ${propiedad.estancia_minima_noches} noches.`
+              : ''}
+          </p>
+        )}
 
         <div style={styles.detalles}>
           <div style={styles.detalle}>
@@ -269,7 +329,30 @@ function DetallePropiedades() {
                 </div>
               </div>
 
-              <button onClick={handleSubmitReserva} style={styles.botonReservar} disabled={enviandoReserva}>
+              {cotizando && <p style={styles.cotizandoTexto}>Calculando precio...</p>}
+
+              {errorCotizacion && !cotizando && (
+                <p style={styles.avisoCotizacion}>{errorCotizacion}</p>
+              )}
+
+              {cotizacion && !cotizando && (
+                <div style={styles.cotizacionBox}>
+                  <div style={styles.cotizacionFila}>
+                    <span>{cotizacion.noches} noche(s) · {ETIQUETAS_ESTADIA[cotizacion.tipo_estadia]}</span>
+                    <span>L. {formatearMonto(cotizacion.promedio_noche)} / noche</span>
+                  </div>
+                  <div style={styles.cotizacionTotal}>
+                    <span>Total estimado</span>
+                    <span>L. {formatearMonto(cotizacion.total)}</span>
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={handleSubmitReserva}
+                style={styles.botonReservar}
+                disabled={enviandoReserva || cotizando || !!errorCotizacion || !cotizacion}
+              >
                 {enviandoReserva ? 'Enviando solicitud...' : 'Solicitar reserva'}
               </button>
             </div>
@@ -425,6 +508,47 @@ const styles = {
     border: '1px solid #ddd',
     fontSize: '0.95rem',
     outline: 'none'
+  },
+  cotizandoTexto: {
+    color: '#888',
+    fontSize: '0.85rem',
+    margin: 0
+  },
+  avisoCotizacion: {
+    backgroundColor: '#fff4e0',
+    color: '#b26a00',
+    padding: '0.7rem 0.9rem',
+    borderRadius: '4px',
+    fontSize: '0.85rem',
+    margin: 0
+  },
+  cotizacionBox: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: '6px',
+    padding: '0.9rem 1rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.5rem'
+  },
+  cotizacionFila: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '0.9rem',
+    color: '#555'
+  },
+  cotizacionTotal: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '1.1rem',
+    fontWeight: 'bold',
+    color: '#1a1a2e',
+    borderTop: '1px solid #ddd',
+    paddingTop: '0.5rem'
+  },
+  reglasEstadia: {
+    color: '#b26a00',
+    fontSize: '0.85rem',
+    margin: '-1rem 0 1.5rem 0'
   },
   botonReservar: {
     padding: '0.8rem',
