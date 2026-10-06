@@ -30,4 +30,27 @@ router.post('/cotizar', async (req, res) => {
   })
 })
 
+// POST /api/precios/simular
+
+router.post('/simular', async (req, res) => {
+  const precio = Number(req.body.precio_mensual)
+
+  if (!precio || precio <= 0) {
+    return res.status(400).json({ error: 'precio_mensual debe ser un número mayor que cero' })
+  }
+
+  const { data, error } = await supabase.rpc('fn_simular_precios', {
+    p_precio_mensual: precio
+  })
+
+  if (error) return res.status(400).json({ error: error.message })
+
+  res.json(data.map(f => ({
+    noches: f.out_noches,
+    tipo_estadia: f.out_tipo_estadia,
+    total: Number(f.out_subtotal),
+    promedio_noche: Number(f.out_promedio_noche)
+  })))
+})
+
 export default router

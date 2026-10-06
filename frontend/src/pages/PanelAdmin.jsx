@@ -4,7 +4,8 @@ import { useAuth } from '../context/AuthContext'
 import { getPropiedades, getReservas, getContratos, getPagos, createPropiedad,
   getImagenes, uploadImagen, deleteImagen, setImagenPortada, getPropietarioPorAuth,
   aprobarReserva, updateReserva, enviarMensaje, cancelarContrato, createUbicacion,
-  createCalificacion } from '../services/api'
+  createCalificacion, updatePropiedad } from '../services/api'
+import SimuladorPrecios from '../components/SimuladorPrecios'
 
 function PanelAdmin() {
   const { usuario } = useAuth()
@@ -40,6 +41,13 @@ function PanelAdmin() {
   const [mostrarImagenes, setMostrarImagenes] = useState(false)
   const [subiendoImagen, setSubiendoImagen] = useState(false)
   const [exito, setExito] = useState(false)
+
+  // Edición de una propiedad ya publicada
+  const [propiedadEditando, setPropiedadEditando] = useState(null)
+  const [formEdicion, setFormEdicion] = useState({})
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false)
+  const [errorEdicion, setErrorEdicion] = useState(null)
+  const [exitoEdicion, setExitoEdicion] = useState(null)
   const [error, setError] = useState(null)
   const [form, setForm] = useState({
     titulo: '',
@@ -87,7 +95,8 @@ function PanelAdmin() {
     }).catch(() => setLoading(false))
   }
 
-
+  // Cruza propiedades -> reservas -> contratos -> pagos, todo filtrado
+  // al propietario que inició sesión
   useEffect(() => {
     if (!propietarioActual) {
       setPropiedadesPropias([])
@@ -326,6 +335,69 @@ function PanelAdmin() {
     }
   }
 
+  const handleAbrirEditar = (p) => {
+    setErrorEdicion(null)
+    setPropiedadEditando(p)
+    setFormEdicion({
+      titulo: p.titulo || '',
+      descripcion: p.descripcion || '',
+      tipo: p.tipo || 'apartamento',
+      precio_mensual: String(p.precio_mensual ?? ''),
+      habitaciones: String(p.habitaciones ?? ''),
+      banos: String(p.banos ?? ''),
+      metros_cuadrados: p.metros_cuadrados != null ? String(p.metros_cuadrados) : '',
+      acepta_estadias_cortas: p.acepta_estadias_cortas !== false,
+      estancia_minima_noches: String(p.estancia_minima_noches ?? 1)
+    })
+  }
+
+  const handleCambioEdicion = (e) => {
+    setFormEdicion({ ...formEdicion, [e.target.name]: e.target.value })
+  }
+
+  const handleGuardarEdicion = async () => {
+    setErrorEdicion(null)
+
+    const precio = parseFloat(formEdicion.precio_mensual)
+    const estanciaMinima = parseInt(formEdicion.estancia_minima_noches)
+
+    if (!formEdicion.titulo.trim()) {
+      setErrorEdicion('El título es obligatorio')
+      return
+    }
+    if (!precio || precio <= 0) {
+      setErrorEdicion('La renta mensual debe ser mayor que cero')
+      return
+    }
+    if (!estanciaMinima || estanciaMinima < 1) {
+      setErrorEdicion('La estancia mínima debe ser de al menos 1 noche')
+      return
+    }
+
+    setGuardandoEdicion(true)
+    try {
+      await updatePropiedad(propiedadEditando.id_propiedad, {
+        titulo: formEdicion.titulo.trim(),
+        descripcion: formEdicion.descripcion,
+        tipo: formEdicion.tipo,
+        precio_mensual: precio,
+        habitaciones: parseInt(formEdicion.habitaciones) || 1,
+        banos: parseInt(formEdicion.banos) || 1,
+        metros_cuadrados: parseFloat(formEdicion.metros_cuadrados) || null,
+        acepta_estadias_cortas: formEdicion.acepta_estadias_cortas,
+        estancia_minima_noches: estanciaMinima
+      })
+      setPropiedadEditando(null)
+      setExitoEdicion('Propiedad actualizada correctamente')
+      cargarDatos()
+      setTimeout(() => setExitoEdicion(null), 3000)
+    } catch (err) {
+      setErrorEdicion('Error al guardar los cambios. Intenta de nuevo.')
+    } finally {
+      setGuardandoEdicion(false)
+    }
+  }
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
@@ -441,6 +513,7 @@ function PanelAdmin() {
       </div>
 
       {exito && <p style={styles.exito}>✅ Propiedad creada exitosamente</p>}
+      {exitoEdicion && <p style={styles.exito}>✅ {exitoEdicion}</p>}
       {error && <p style={styles.error}>{error}</p>}
 
       {reservasPendientes.length > 0 && (
@@ -713,12 +786,10 @@ function PanelAdmin() {
             <div style={styles.bloqueEstadias}>
               <p style={styles.tituloEstadias}>Estadías cortas</p>
               <p style={styles.textoEstadias}>
-                A partir de tu renta mensual, el sistema calcula automáticamente el precio por noche
-                {form.precio_mensual && parseFloat(form.precio_mensual) > 0
-                  ? ` (tarifa base: L. ${(parseFloat(form.precio_mensual) / 30).toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} por noche, renta mensual ÷ 30)`
-                  : ''}.
-                Las estadías cortas llevan un recargo automático; las de 28 noches o más se prorratean sobre tu renta mensual.
+                A partir de tu renta mensual, el sistema calcula automáticamente cuánto se cobra por estadías
+                más cortas o más largas.
               </p>
+              <SimuladorPrecios precioMensual={form.precio_mensual} />
               <div style={styles.fila}>
                 <div style={styles.checkEstadias}>
                   <input
@@ -850,12 +921,20 @@ function PanelAdmin() {
                   <td style={styles.td}>{p.habitaciones}</td>
                   <td style={styles.td}>{p.banos}</td>
                   <td style={styles.td}>
-                  <button
-                    onClick={() => handleVerImagenes(p)}
-                    style={styles.botonImagenes}
-                  >
-                      Gestionar Imagenes
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button
+                        onClick={() => handleAbrirEditar(p)}
+                        style={styles.botonEditar}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleVerImagenes(p)}
+                        style={styles.botonImagenes}
+                      >
+                        Gestionar Imagenes
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -948,6 +1027,102 @@ function PanelAdmin() {
             </div>
           </div>
         )}
+
+        {/* Modal de edición de propiedad */}
+        {propiedadEditando && (() => {
+          const pendientes = reservasPendientes.filter(r => r.id_propiedad === propiedadEditando.id_propiedad).length
+          const precioCambio = parseFloat(formEdicion.precio_mensual) !== parseFloat(propiedadEditando.precio_mensual)
+
+          return (
+            <div style={styles.modalOverlay}>
+              <div style={{ ...styles.modal, maxWidth: '640px' }}>
+                <div style={styles.modalHeader}>
+                  <h3 style={styles.modalTitulo}>✏️ Editar — {propiedadEditando.titulo}</h3>
+                  <button onClick={() => setPropiedadEditando(null)} style={styles.botonCerrar}>✕</button>
+                </div>
+
+                {errorEdicion && <p style={styles.error}>{errorEdicion}</p>}
+
+                <div style={styles.fila}>
+                  <div style={styles.campo}>
+                    <label style={styles.label}>Título *</label>
+                    <input name="titulo" value={formEdicion.titulo} onChange={handleCambioEdicion} style={styles.input} />
+                  </div>
+                  <div style={styles.campo}>
+                    <label style={styles.label}>Tipo</label>
+                    <select name="tipo" value={formEdicion.tipo} onChange={handleCambioEdicion} style={styles.input}>
+                      <option value="apartamento">Apartamento</option>
+                      <option value="casa">Casa</option>
+                      <option value="local">Local comercial</option>
+                      <option value="cuarto">Cuarto</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={styles.campo}>
+                  <label style={styles.label}>Descripción</label>
+                  <textarea name="descripcion" value={formEdicion.descripcion} onChange={handleCambioEdicion} style={styles.textarea} />
+                </div>
+
+                <div style={styles.fila}>
+                  <div style={styles.campo}>
+                    <label style={styles.label}>Habitaciones</label>
+                    <input type="number" name="habitaciones" value={formEdicion.habitaciones} onChange={handleCambioEdicion} style={styles.input} />
+                  </div>
+                  <div style={styles.campo}>
+                    <label style={styles.label}>Baños</label>
+                    <input type="number" name="banos" value={formEdicion.banos} onChange={handleCambioEdicion} style={styles.input} />
+                  </div>
+                  <div style={styles.campo}>
+                    <label style={styles.label}>Metros cuadrados</label>
+                    <input type="number" name="metros_cuadrados" value={formEdicion.metros_cuadrados} onChange={handleCambioEdicion} style={styles.input} />
+                  </div>
+                </div>
+
+                <div style={styles.campo}>
+                  <label style={styles.label}>Renta mensual que deseas recibir (L.) *</label>
+                  <input type="number" name="precio_mensual" value={formEdicion.precio_mensual} onChange={handleCambioEdicion} style={styles.input} />
+                </div>
+
+                {precioCambio && (
+                  <p style={styles.avisoEdicion}>
+                    Los contratos ya aprobados no cambian: conservan el precio con el que se firmaron.
+                    {pendientes > 0 && ` Esta propiedad tiene ${pendientes} solicitud(es) pendiente(s); se aprobarán con el nuevo precio, que puede ser distinto al que vio el inquilino al solicitar.`}
+                  </p>
+                )}
+
+                <div style={styles.bloqueEstadias}>
+                  <p style={styles.tituloEstadias}>Estadías cortas</p>
+                  <SimuladorPrecios precioMensual={formEdicion.precio_mensual} />
+                  <div style={styles.fila}>
+                    <div style={styles.checkEstadias}>
+                      <input
+                        type="checkbox"
+                        id="aceptaCortasEdicion"
+                        checked={formEdicion.acepta_estadias_cortas}
+                        onChange={(e) => setFormEdicion({ ...formEdicion, acepta_estadias_cortas: e.target.checked })}
+                      />
+                      <label htmlFor="aceptaCortasEdicion" style={styles.label}>Acepto estadías de menos de 28 noches</label>
+                    </div>
+                    <div style={styles.campo}>
+                      <label style={styles.label}>Estancia mínima (noches)</label>
+                      <input type="number" min="1" name="estancia_minima_noches" value={formEdicion.estancia_minima_noches} onChange={handleCambioEdicion} style={styles.input} />
+                    </div>
+                  </div>
+                </div>
+
+                <p style={styles.notaEdicion}>
+                  El estado de la propiedad y su dirección no se editan aquí: el estado cambia solo con las
+                  reservas y contratos.
+                </p>
+
+                <button onClick={handleGuardarEdicion} style={styles.botonGuardar} disabled={guardandoEdicion}>
+                  {guardandoEdicion ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Modal de calificación */}
         {contratoACalificar && (
@@ -1164,6 +1339,30 @@ const styles = {
       fontSize: '0.9rem',
       color: '#ffc107',
       alignSelf: 'center'
+    },
+    botonEditar: {
+      padding: '0.4rem 0.8rem',
+      backgroundColor: '#e94560',
+      color: 'white',
+      border: 'none',
+      borderRadius: '4px',
+      cursor: 'pointer',
+      fontSize: '0.8rem',
+      fontWeight: 'bold'
+    },
+    avisoEdicion: {
+      backgroundColor: '#fff4e0',
+      color: '#b26a00',
+      padding: '0.7rem 0.9rem',
+      borderRadius: '4px',
+      fontSize: '0.82rem',
+      margin: '0 0 1rem 0',
+      lineHeight: 1.5
+    },
+    notaEdicion: {
+      fontSize: '0.78rem',
+      color: '#888',
+      margin: '0 0 0.5rem 0'
     },
     bloqueEstadias: {
       backgroundColor: '#fff',

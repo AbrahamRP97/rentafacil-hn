@@ -73,6 +73,7 @@ export const verificarSesionPago = (data) => api.post('/pagos-stripe/verificar-s
 
 // Cotización de precios dinámicos
 export const cotizarEstadia = (data) => api.post('/precios/cotizar', data)
+export const simularPrecios = (data) => api.post('/precios/simular', data)
 
 // Asistente de IA (gestión de proyectos)
 export const consultarAsistente = (pregunta) => api.post('/asistente/consultar', { pregunta })
