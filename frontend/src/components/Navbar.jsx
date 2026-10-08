@@ -47,6 +47,13 @@ function Navbar() {
     navigate('/')
   }
 
+  const iniciales = usuario
+    ? `${(usuario.nombre || usuario.email || '?')[0]}${(usuario.apellido || '')[0] || ''}`.toUpperCase()
+    : ''
+  const avatar = usuario?.foto_url
+    ? <img src={usuario.foto_url} alt="Foto de perfil" style={styles.avatar} />
+    : <span style={styles.avatarIniciales}>{iniciales}</span>
+
   return (
     <nav style={styles.nav}>
       <Link to="/" style={styles.logo}>RentaFácil HN</Link>
@@ -71,6 +78,10 @@ function Navbar() {
         {usuario && usuario.rol === 'anfitrion' && (
           <>
             <Link to="/admin" className="btn btn-primario btn-sm">Panel Admin</Link>
+            <Link to="/perfil" style={styles.linkPerfil} title="Mi perfil">
+              {avatar}
+              <span>Mi perfil</span>
+            </Link>
             <button onClick={handleLogout} className="btn btn-claro btn-sm">Cerrar Sesión</button>
           </>
         )}
@@ -78,6 +89,10 @@ function Navbar() {
         {usuario && usuario.rol === 'inquilino' && (
           <>
             <Link to="/mis-reservas" style={styles.link}>Mis reservas</Link>
+            <Link to="/perfil" style={styles.linkPerfil} title="Mi perfil">
+              {avatar}
+              <span>Mi perfil</span>
+            </Link>
             <button onClick={handleLogout} className="btn btn-claro btn-sm">Cerrar Sesión</button>
           </>
         )}
@@ -118,6 +133,34 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '0.4rem'
+  },
+  linkPerfil: {
+    color: 'white',
+    textDecoration: 'none',
+    fontSize: '1rem',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem'
+  },
+  avatar: {
+    width: '32px',
+    height: '32px',
+    borderRadius: '50%',
+    objectFit: 'cover',
+    border: '2px solid white'
+  },
+  avatarIniciales: {
+    width: '32px',
+    height: '32px',
+    borderRadius: '50%',
+    backgroundColor: '#e94560',
+    color: 'white',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '0.8rem',
+    fontWeight: 'bold',
+    border: '2px solid white'
   },
   badge: {
     backgroundColor: '#e94560',

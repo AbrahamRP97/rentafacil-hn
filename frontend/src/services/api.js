@@ -84,3 +84,17 @@ export const simularPrecios = (data) => api.post('/precios/simular', data)
 
 
 export default api
+
+const authHeaders = async () => {
+  const { data } = await supabase.auth.getSession()
+  const token = data?.session?.access_token
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+export const getMiPerfil = async () => api.get('/perfil', { headers: await authHeaders() })
+export const updateMiPerfil = async (datos) => api.put('/perfil', datos, { headers: await authHeaders() })
+export const subirFotoPerfil = async (archivo) => {
+  const formData = new FormData()
+  formData.append('foto', archivo)
+  return api.post('/perfil/foto', formData, { headers: await authHeaders() })
+}
+export const quitarFotoPerfil = async () => api.delete('/perfil/foto', { headers: await authHeaders() })

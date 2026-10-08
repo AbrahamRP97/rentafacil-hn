@@ -13,6 +13,7 @@ import Mensajes from './pages/Mensajes'
 import ChatConversacion from './pages/ChatConversacion'
 import MisReservas from './pages/MisReservas'
 import ContratoDigital from './pages/ContratoDigital'
+import MiPerfil from './pages/MiPerfil'
 import RutaProtegida from './components/RutaProtegida'
 import './index.css'
 import './botones.css'
@@ -46,6 +47,11 @@ createRoot(document.getElementById('root')).render(
           <Route path="/mis-reservas" element={
             <RutaProtegida rol="inquilino">
               <MisReservas />
+            </RutaProtegida>
+          } />
+          <Route path="/perfil" element={
+            <RutaProtegida>
+              <MiPerfil />
             </RutaProtegida>
           } />
           <Route path="/contrato/:id_contrato" element={

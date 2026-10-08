@@ -3,6 +3,7 @@ import { supabase } from '../services/supabaseClient'
 
 const AuthContext = createContext()
 
+// Convierte el usuario de Supabase Auth al formato que ya usa el resto de la app
 function mapUsuario(supabaseUser) {
   if (!supabaseUser) return null
   return {
@@ -10,6 +11,8 @@ function mapUsuario(supabaseUser) {
     email: supabaseUser.email,
     nombre: supabaseUser.user_metadata?.nombre || '',
     apellido: supabaseUser.user_metadata?.apellido || '',
+    telefono: supabaseUser.user_metadata?.telefono || '',
+    foto_url: supabaseUser.user_metadata?.foto_url || '',
     rol: supabaseUser.user_metadata?.rol || 'inquilino'
   }
 }
