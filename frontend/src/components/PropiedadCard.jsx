@@ -18,7 +18,7 @@ function PropiedadCard({ propiedad }) {
         <p style={styles.precio}>L. {propiedad.precio_mensual} / mes</p>
         <p style={styles.tipo}>🏠 {propiedad.tipo}</p>
         <p style={styles.estado}>Estado: {propiedad.estado}</p>
-        <Link to={`/propiedades/${propiedad.id_propiedad}`} style={styles.boton}>
+        <Link to={`/propiedades/${propiedad.id_propiedad}`} className="btn btn-secundario btn-block">
           Ver detalle
         </Link>
       </div>
@@ -70,16 +70,6 @@ const styles = {
     margin: 0,
     textTransform: 'capitalize'
   },
-  boton: {
-    marginTop: '0.5rem',
-    padding: '0.5rem 1rem',
-    backgroundColor: '#1a1a2e',
-    color: 'white',
-    textDecoration: 'none',
-    borderRadius: '4px',
-    textAlign: 'center',
-    fontSize: '0.9rem'
-  }
 }
 
 export default PropiedadCard

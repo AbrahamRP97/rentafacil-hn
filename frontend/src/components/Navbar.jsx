@@ -64,21 +64,21 @@ function Navbar() {
         {!usuario && (
           <>
             <Link to="/login" style={styles.link}>Iniciar Sesión</Link>
-            <Link to="/admin" style={styles.botonAnfitrion}>Anfitriones</Link>
+            <Link to="/admin" className="btn btn-primario btn-sm">Anfitriones</Link>
           </>
         )}
 
         {usuario && usuario.rol === 'anfitrion' && (
           <>
-            <Link to="/admin" style={styles.botonAnfitrion}>Panel Admin</Link>
-            <button onClick={handleLogout} style={styles.botonCerrarSesion}>Cerrar Sesión</button>
+            <Link to="/admin" className="btn btn-primario btn-sm">Panel Admin</Link>
+            <button onClick={handleLogout} className="btn btn-claro btn-sm">Cerrar Sesión</button>
           </>
         )}
 
         {usuario && usuario.rol === 'inquilino' && (
           <>
             <Link to="/mis-reservas" style={styles.link}>Mis reservas</Link>
-            <button onClick={handleLogout} style={styles.botonCerrarSesion}>Cerrar Sesión</button>
+            <button onClick={handleLogout} className="btn btn-claro btn-sm">Cerrar Sesión</button>
           </>
         )}
       </div>
@@ -132,25 +132,6 @@ const styles = {
     fontWeight: 'bold',
     padding: '0 0.3rem'
   },
-  botonAnfitrion: {
-    padding: '0.5rem 1.2rem',
-    backgroundColor: '#e94560',
-    color: 'white',
-    textDecoration: 'none',
-    borderRadius: '4px',
-    fontSize: '0.95rem',
-    fontWeight: 'bold'
-  },
-  botonCerrarSesion: {
-    padding: '0.5rem 1.2rem',
-    backgroundColor: 'transparent',
-    color: 'white',
-    border: '1px solid white',
-    borderRadius: '4px',
-    fontSize: '0.95rem',
-    fontWeight: 'bold',
-    cursor: 'pointer'
-  }
 }
 
 export default Navbar

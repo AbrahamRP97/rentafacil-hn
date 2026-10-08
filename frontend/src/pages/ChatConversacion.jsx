@@ -20,7 +20,6 @@ function ChatConversacion() {
 
   const finMensajesRef = useRef(null)
 
-  // ID de propietario e ID de inquilino de esta conversación, según el rol de quien mira
   const idPropietario = usuario?.rol === 'anfitrion' ? perfilActual?.id_propietario : id_otro
   const idInquilino = usuario?.rol === 'anfitrion' ? id_otro : perfilActual?.id_inquilino
 
@@ -46,7 +45,6 @@ function ChatConversacion() {
         })
         .catch(() => setLoading(false))
 
-      // Marca como leídos los mensajes que envió la otra parte
       const remitenteOtraParte = usuario.rol === 'anfitrion' ? 'inquilino' : 'propietario'
       marcarMensajesLeidos({
         id_propiedad,
@@ -135,7 +133,7 @@ function ChatConversacion() {
             placeholder="Escribe un mensaje..."
             style={styles.inputMensaje}
           />
-          <button type="submit" style={styles.botonEnviar} disabled={enviando || !texto.trim()}>
+          <button type="submit" className="btn btn-primario" disabled={enviando || !texto.trim()}>
             Enviar
           </button>
         </form>
@@ -240,16 +238,6 @@ const styles = {
     border: '1px solid #ddd',
     fontSize: '0.95rem',
     outline: 'none'
-  },
-  botonEnviar: {
-    padding: '0.7rem 1.4rem',
-    backgroundColor: '#1a1a2e',
-    color: 'white',
-    border: 'none',
-    borderRadius: '20px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    fontSize: '0.9rem'
   },
   mensajeCarga: {
     padding: '2rem',

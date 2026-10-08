@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { getPropiedades, getReservas, getContratos, getPagos, createPropiedad,
   getImagenes, uploadImagen, deleteImagen, setImagenPortada, getPropietarioPorAuth,
   aprobarReserva, updateReserva, enviarMensaje, cancelarContrato, createUbicacion,
-  createCalificacion, updatePropiedad, updateUbicacion } from '../services/api'
+  createCalificacion, updatePropiedad, updateUbicacion, deletePropiedad } from '../services/api'
 import SimuladorPrecios from '../components/SimuladorPrecios'
 import SelectorUbicacion from '../components/SelectorUbicacion'
 
@@ -42,6 +42,9 @@ function PanelAdmin() {
   const [mostrarImagenes, setMostrarImagenes] = useState(false)
   const [subiendoImagen, setSubiendoImagen] = useState(false)
   const [exito, setExito] = useState(false)
+  const [propiedadAEliminar, setPropiedadAEliminar] = useState(null)
+  const [eliminando, setEliminando] = useState(false)
+  const [errorEliminar, setErrorEliminar] = useState(null)
 
   // Edición de una propiedad ya publicada
   const [propiedadEditando, setPropiedadEditando] = useState(null)
@@ -99,8 +102,6 @@ function PanelAdmin() {
     }).catch(() => setLoading(false))
   }
 
-  // Cruza propiedades -> reservas -> contratos -> pagos, todo filtrado
-  // al propietario que inició sesión
   useEffect(() => {
     if (!propietarioActual) {
       setPropiedadesPropias([])
@@ -174,6 +175,25 @@ function PanelAdmin() {
       setError('Error al subir una o más imágenes')
     } finally {
       setSubiendoImagen(false)
+    }
+  }
+
+  const handleConfirmarEliminarPropiedad = async () => {
+    if (!propiedadAEliminar) return
+    setEliminando(true)
+    setErrorEliminar(null)
+    try {
+      const res = await deletePropiedad(propiedadAEliminar.id_propiedad)
+      setPropiedadAEliminar(null)
+      setExitoEdicion(res.data?.accion === 'archivada'
+        ? 'Propiedad archivada: ya no aparece en el sitio y tu historial se conserva'
+        : 'Propiedad eliminada correctamente')
+      setTimeout(() => setExitoEdicion(null), 4000)
+      cargarDatos()
+    } catch (e) {
+      setErrorEliminar(e.response?.data?.error || 'No se pudo eliminar la propiedad')
+    } finally {
+      setEliminando(false)
     }
   }
 
@@ -389,7 +409,6 @@ function PanelAdmin() {
 
     setGuardandoEdicion(true)
     try {
-      // Ubicación: solo se toca si el propietario cambió la dirección o el pin
       const u = propiedadEditando.UBICACIONES || {}
       const num = (v) => (v === null || v === undefined || v === '' ? null : Number(v))
       const datosUbicacion = {
@@ -408,8 +427,6 @@ function PanelAdmin() {
 
       let idUbicacion = propiedadEditando.id_ubicacion
       if (cambioUbicacion) {
-        // Si otra propiedad comparte esta misma ubicación (datos antiguos), no se modifica:
-        // se crea una ubicación nueva para esta propiedad y se vincula a ella.
         const compartida = propiedades.filter(x => x.id_ubicacion === idUbicacion).length > 1
         if (compartida || !idUbicacion) {
           const resNueva = await createUbicacion(datosUbicacion)
@@ -612,14 +629,14 @@ function PanelAdmin() {
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button
                         onClick={() => handleAprobarReserva(r.id_reserva)}
-                        style={styles.botonAprobar}
+                        className="btn btn-exito btn-sm"
                         disabled={procesandoReserva === r.id_reserva}
                       >
                         {procesandoReserva === r.id_reserva ? '...' : 'Aprobar'}
                       </button>
                       <button
                         onClick={() => handleRechazarReserva(r.id_reserva)}
-                        style={styles.botonRechazar}
+                        className="btn btn-peligro btn-sm"
                         disabled={procesandoReserva === r.id_reserva}
                       >
                         Rechazar
@@ -683,13 +700,13 @@ function PanelAdmin() {
                     </td>
                     <td style={styles.td}>
                       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <Link to={`/contrato/${c.id_contrato}`} style={styles.botonImagenes}>
+                        <Link to={`/contrato/${c.id_contrato}`} className="btn btn-secundario btn-sm">
                           Ver contrato
                         </Link>
                         {c.estado === 'activo' && (
                           <button
                             onClick={() => handleCancelarContrato(c.id_contrato)}
-                            style={styles.botonRechazar}
+                            className="btn btn-peligro btn-sm"
                             disabled={procesandoReserva === c.id_contrato}
                           >
                             {procesandoReserva === c.id_contrato ? '...' : 'Cancelar'}
@@ -704,7 +721,7 @@ function PanelAdmin() {
                           ) : (
                             <button
                               onClick={() => handleAbrirCalificar(c.id_contrato)}
-                              style={styles.botonImagenes}
+                              className="btn btn-secundario btn-sm"
                             >
                               ⭐ Calificar inquilino
                             </button>
@@ -757,7 +774,7 @@ function PanelAdmin() {
                     <td style={styles.td}>{p.fecha_pago}</td>
                     <td style={styles.td}>
                       {p.referencia && p.referencia.startsWith('http') ? (
-                        <a href={p.referencia} target="_blank" rel="noreferrer" style={styles.botonImagenes}>
+                        <a href={p.referencia} target="_blank" rel="noreferrer" className="btn btn-secundario btn-sm">
                           Ver comprobante
                         </a>
                       ) : (
@@ -775,15 +792,9 @@ function PanelAdmin() {
       <div style={styles.seccion}>
         <div style={styles.seccionHeader}>
           <h3 style={styles.seccionTitulo}>Mis propiedades</h3>
-          <Link to="/admin/consultas-avanzadas" style={styles.botonConsulta}>
-            Consultas avanzadas
-          </Link>
-          <Link to="/admin/asistente-ia" style={styles.botonConsulta}>
-            🤖 Asistente IA
-          </Link>
           <button
             onClick={() => { setMostrarFormulario(!mostrarFormulario); setError(null) }}
-            style={styles.botonAgregar}
+            className="btn btn-primario"
             disabled={!propietarioActual}
           >
             {mostrarFormulario ? '✕ Cancelar' : '+ Agregar propiedad'}
@@ -920,7 +931,7 @@ function PanelAdmin() {
                         <button
                           type="button"
                           onClick={() => handleMarcarPortadaNueva(index)}
-                          style={styles.botonImagenes}
+                          className="btn btn-secundario btn-sm"
                         >
                           Usar como portada
                         </button>
@@ -928,7 +939,7 @@ function PanelAdmin() {
                       <button
                         type="button"
                         onClick={() => handleQuitarImagenNueva(index)}
-                        style={styles.botonEliminar}
+                        className="btn btn-peligro btn-sm"
                       >
                         🗑️ Quitar
                       </button>
@@ -938,7 +949,7 @@ function PanelAdmin() {
               )}
             </div>
 
-            <button onClick={handleSubmit} style={styles.botonGuardar}>
+            <button onClick={handleSubmit} className="btn btn-primario">
               Guardar propiedad
             </button>
           </div>
@@ -983,15 +994,21 @@ function PanelAdmin() {
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <button
                         onClick={() => handleAbrirEditar(p)}
-                        style={styles.botonEditar}
+                        className="btn btn-secundario btn-sm"
                       >
                         Editar
                       </button>
                       <button
                         onClick={() => handleVerImagenes(p)}
-                        style={styles.botonImagenes}
+                        className="btn btn-secundario btn-sm"
                       >
                         Gestionar Imagenes
+                      </button>
+                      <button
+                        onClick={() => { setErrorEliminar(null); setPropiedadAEliminar(p) }}
+                        className="btn btn-peligro btn-sm"
+                      >
+                        Eliminar
                       </button>
                     </div>
                   </td>
@@ -1001,6 +1018,36 @@ function PanelAdmin() {
           </table>
         )}
       </div>
+        {propiedadAEliminar && (
+          <div style={styles.modalOverlay}>
+            <div style={{ ...styles.modal, maxWidth: '460px' }}>
+              <h3 style={{ marginTop: 0, color: '#1a1a2e' }}>¿Eliminar esta propiedad?</h3>
+              <p style={{ color: '#555', lineHeight: 1.5 }}>
+                <strong>{propiedadAEliminar.titulo}</strong> dejará de aparecer en el sitio.
+                Si nunca tuvo reservas se borra por completo junto con sus fotos; si ya tiene
+                historial de reservas o contratos se archiva para conservar ese historial.
+              </p>
+              {errorEliminar && <p style={styles.error}>{errorEliminar}</p>}
+              <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'flex-end', marginTop: '1.2rem' }}>
+                <button
+                  onClick={() => setPropiedadAEliminar(null)}
+                  className="btn btn-suave"
+                  disabled={eliminando}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleConfirmarEliminarPropiedad}
+                  className="btn btn-peligro"
+                  disabled={eliminando}
+                >
+                  {eliminando ? 'Eliminando...' : 'Sí, eliminar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {mostrarImagenes && propiedadSeleccionada && (
           <div style={styles.modalOverlay}>
             <div style={styles.modal}>
@@ -1010,7 +1057,7 @@ function PanelAdmin() {
                 </h3>
                 <button
                   onClick={() => { setMostrarImagenes(false); setPropiedadSeleccionada(null); setImagenes([]); setArchivosImagen([]) }}
-                  style={styles.botonCerrar}
+                  className="btn btn-suave btn-sm"
                 >
                   ✕
                 </button>
@@ -1044,7 +1091,7 @@ function PanelAdmin() {
                     Usar la primera imagen del lote como portada
                   </label>
                 </div>
-                <button onClick={handleAgregarImagenes} style={styles.botonGuardar} disabled={subiendoImagen}>
+                <button onClick={handleAgregarImagenes} className="btn btn-primario" disabled={subiendoImagen}>
                   {subiendoImagen ? 'Subiendo...' : 'Agregar imágenes'}
                 </button>
               </div>
@@ -1067,14 +1114,14 @@ function PanelAdmin() {
                         ) : (
                           <button
                             onClick={() => handleMarcarPortada(img.id_imagen)}
-                            style={styles.botonImagenes}
+                            className="btn btn-secundario btn-sm"
                           >
                             Usar como portada
                           </button>
                         )}
                         <button
                           onClick={() => handleEliminarImagen(img.id_imagen)}
-                          style={styles.botonEliminar}
+                          className="btn btn-peligro btn-sm"
                         >
                           🗑️ Eliminar
                         </button>
@@ -1097,7 +1144,7 @@ function PanelAdmin() {
               <div style={{ ...styles.modal, maxWidth: '640px' }}>
                 <div style={styles.modalHeader}>
                   <h3 style={styles.modalTitulo}>✏️ Editar — {propiedadEditando.titulo}</h3>
-                  <button onClick={() => setPropiedadEditando(null)} style={styles.botonCerrar}>✕</button>
+                  <button onClick={() => setPropiedadEditando(null)} className="btn btn-suave btn-sm">✕</button>
                 </div>
 
                 {errorEdicion && <p style={styles.error}>{errorEdicion}</p>}
@@ -1202,7 +1249,7 @@ function PanelAdmin() {
                   reservas y contratos.
                 </p>
 
-                <button onClick={handleGuardarEdicion} style={styles.botonGuardar} disabled={guardandoEdicion}>
+                <button onClick={handleGuardarEdicion} className="btn btn-primario" disabled={guardandoEdicion}>
                   {guardandoEdicion ? 'Guardando...' : 'Guardar cambios'}
                 </button>
               </div>
@@ -1216,7 +1263,7 @@ function PanelAdmin() {
             <div style={{ ...styles.modal, maxWidth: '400px' }}>
               <div style={styles.modalHeader}>
                 <h3 style={styles.modalTitulo}>⭐ Calificar al inquilino</h3>
-                <button onClick={() => setContratoACalificar(null)} style={styles.botonCerrar}>✕</button>
+                <button onClick={() => setContratoACalificar(null)} className="btn btn-suave btn-sm">✕</button>
               </div>
 
               {error && <p style={styles.error}>{error}</p>}
@@ -1242,7 +1289,7 @@ function PanelAdmin() {
                 />
                 <button
                   onClick={handleEnviarCalificacion}
-                  style={styles.botonGuardar}
+                  className="btn btn-primario"
                   disabled={enviandoCalificacion}
                 >
                   {enviandoCalificacion ? 'Enviando...' : 'Enviar calificación'}
@@ -1305,28 +1352,6 @@ const styles = {
     marginBottom: '1rem'
   },
   seccionTitulo: { fontSize: '1.2rem', color: '#1a1a2e', margin: 0 },
-  botonConsulta: {
-    padding: '0.5rem 1.2rem',
-    backgroundColor: '#e94560',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontWeight: 'bold',
-    fontSize: '0.9rem',
-    textDecoration: 'none',
-    marginLeft: 'auto'
-  },
-  botonAgregar: {
-    padding: '0.5rem 1.2rem',
-    backgroundColor: '#1a1a2e',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontWeight: 'bold',
-    fontSize: '0.9rem'
-  },
   formulario: {
     backgroundColor: '#f9f9f9',
     borderRadius: '8px',
@@ -1358,17 +1383,6 @@ const styles = {
     outline: 'none',
     minHeight: '80px',
     resize: 'vertical'
-  },
-  botonGuardar: {
-    padding: '0.7rem 1.5rem',
-    backgroundColor: '#e94560',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontWeight: 'bold',
-    fontSize: '0.95rem',
-    marginTop: '0.5rem'
   },
   tabla: { width: '100%', borderCollapse: 'collapse' },
   th: {

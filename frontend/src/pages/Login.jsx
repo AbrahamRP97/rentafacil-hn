@@ -67,7 +67,7 @@ function Login() {
             />
           </div>
 
-          <button onClick={handleSubmit} style={styles.boton} disabled={cargando}>
+          <button onClick={handleSubmit} className="btn btn-primario btn-block" disabled={cargando}>
             {cargando ? 'Ingresando...' : 'Iniciar Sesión'}
           </button>
         </div>
@@ -139,17 +139,6 @@ const styles = {
     border: '1px solid #ddd',
     fontSize: '1rem',
     outline: 'none'
-  },
-  boton: {
-    padding: '0.8rem',
-    backgroundColor: '#e94560',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    fontSize: '1rem',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    marginTop: '0.5rem'
   },
   registroLink: {
   textAlign: 'center',

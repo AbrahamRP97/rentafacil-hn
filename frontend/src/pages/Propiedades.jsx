@@ -82,13 +82,13 @@ function Propiedades() {
         <div style={styles.toggle}>
           <button
             onClick={() => setVista('lista')}
-            style={{ ...styles.botonToggle, ...(vista === 'lista' ? styles.botonToggleActivo : {}) }}
+            className={`btn btn-sm ${vista === 'lista' ? 'btn-secundario' : 'btn-suave'}`}
           >
             📋 Lista
           </button>
           <button
             onClick={() => setVista('mapa')}
-            style={{ ...styles.botonToggle, ...(vista === 'mapa' ? styles.botonToggleActivo : {}) }}
+            className={`btn btn-sm ${vista === 'mapa' ? 'btn-secundario' : 'btn-suave'}`}
           >
             🗺️ Mapa
           </button>
@@ -138,7 +138,7 @@ function Propiedades() {
           />
 
           {hayFiltrosActivos && (
-            <button onClick={handleLimpiarFiltros} style={styles.botonLimpiar}>
+            <button onClick={handleLimpiarFiltros} className="btn btn-suave btn-sm">
               ✕ Limpiar filtros
             </button>
           )}
@@ -193,20 +193,6 @@ const styles = {
     padding: '0.3rem',
     borderRadius: '8px'
   },
-  botonToggle: {
-    padding: '0.5rem 1rem',
-    backgroundColor: 'transparent',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '0.9rem',
-    color: '#555',
-    fontWeight: 'bold'
-  },
-  botonToggleActivo: {
-    backgroundColor: '#1a1a2e',
-    color: 'white'
-  },
   panelFiltros: {
     backgroundColor: 'white',
     borderRadius: '8px',
@@ -235,16 +221,6 @@ const styles = {
     border: '1px solid #ddd',
     fontSize: '0.85rem',
     flex: '1 1 160px'
-  },
-  botonLimpiar: {
-    padding: '0.5rem 0.8rem',
-    backgroundColor: 'transparent',
-    color: '#e94560',
-    border: '1px solid #e94560',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '0.85rem',
-    fontWeight: 'bold'
   },
   contadorResultados: {
     marginTop: '0.8rem',

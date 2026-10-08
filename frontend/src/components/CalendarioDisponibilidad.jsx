@@ -6,7 +6,7 @@ const MESES = [
 ]
 const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
-
+// Estados de reserva que bloquean el calendario (ocupan fechas)
 const ESTADOS_OCUPADOS = ['pendiente', 'aprobada']
 
 function fechaEnRango(fecha, inicio, fin) {
@@ -45,9 +45,9 @@ function CalendarioDisponibilidad({ reservas }) {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <button onClick={() => cambiarMes(-1)} style={styles.botonNav}>←</button>
+        <button onClick={() => cambiarMes(-1)} className="btn btn-suave btn-sm">←</button>
         <span style={styles.tituloMes}>{MESES[month]} {year}</span>
-        <button onClick={() => cambiarMes(1)} style={styles.botonNav}>→</button>
+        <button onClick={() => cambiarMes(1)} className="btn btn-suave btn-sm">→</button>
       </div>
 
       <div style={styles.gridDias}>
@@ -98,15 +98,6 @@ const styles = {
     fontWeight: 'bold',
     color: '#1a1a2e',
     fontSize: '1rem'
-  },
-  botonNav: {
-    backgroundColor: '#1a1a2e',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    padding: '0.3rem 0.7rem',
-    cursor: 'pointer',
-    fontSize: '0.9rem'
   },
   gridDias: {
     display: 'grid',

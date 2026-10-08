@@ -41,7 +41,6 @@ function ContratoDigital() {
 
   useEffect(() => {
     cargarTodo()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id_contrato])
 
   const handleFirmar = async () => {
@@ -101,7 +100,7 @@ function ContratoDigital() {
         <Link to={usuario?.rol === 'anfitrion' ? '/admin' : '/mis-reservas'} style={styles.volver}>
           ← Volver
         </Link>
-        <button onClick={() => window.print()} style={styles.botonImprimir}>
+        <button onClick={() => window.print()} className="btn btn-secundario">
           🖨️ Descargar / Imprimir contrato (PDF)
         </button>
       </div>
@@ -274,7 +273,7 @@ function ContratoDigital() {
                 />
                 <label htmlFor="aceptaTerminos">He leído y acepto los términos y condiciones</label>
               </div>
-              <button onClick={handleFirmar} style={styles.botonFirmar} disabled={firmando}>
+              <button onClick={handleFirmar} className="btn btn-primario" disabled={firmando}>
                 {firmando ? 'Firmando...' : 'Firmar contrato'}
               </button>
             </div>
@@ -303,15 +302,6 @@ const styles = {
     color: '#1a1a2e',
     textDecoration: 'none',
     fontWeight: 'bold'
-  },
-  botonImprimir: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#1a1a2e',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '0.9rem'
   },
   documento: {
     backgroundColor: 'white',
@@ -460,16 +450,6 @@ const styles = {
     alignItems: 'center',
     gap: '0.5rem',
     fontSize: '0.9rem'
-  },
-  botonFirmar: {
-    padding: '0.8rem',
-    backgroundColor: '#e94560',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    fontSize: '1rem'
   },
   error: {
     backgroundColor: '#ffe0e0',

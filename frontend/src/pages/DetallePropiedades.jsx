@@ -66,7 +66,6 @@ function DetallePropiedades() {
       .catch(() => setReservasPropiedad([]))
   }, [id])
 
-  // Si el usuario logueado es inquilino, busca su registro real (id_inquilino)
   useEffect(() => {
     if (usuario && usuario.rol === 'inquilino') {
       getInquilinoPorAuth(usuario.id)
@@ -74,8 +73,6 @@ function DetallePropiedades() {
         .catch(() => setInquilinoActual(null))
     }
   }, [usuario])
-
-  // Cotización en vivo: cada vez que cambian las fechas se pide el precio al backend
 
   useEffect(() => {
     setCotizacion(null)
@@ -270,7 +267,7 @@ function DetallePropiedades() {
               {' '}(contacto manual desde tu correo)
             </p>
             {usuario && usuario.rol === 'inquilino' && (
-              <Link to={`/mensajes/${id}/${propiedad.id_propietario}`} style={styles.botonChat}>
+              <Link to={`/mensajes/${id}/${propiedad.id_propietario}`} className="btn btn-secundario btn-block">
                 💬 Enviar mensaje por el chat interno
               </Link>
             )}
@@ -350,7 +347,7 @@ function DetallePropiedades() {
 
               <button
                 onClick={handleSubmitReserva}
-                style={styles.botonReservar}
+                className="btn btn-primario btn-block"
                 disabled={enviandoReserva || cotizando || !!errorCotizacion || !cotizacion}
               >
                 {enviandoReserva ? 'Enviando solicitud...' : 'Solicitar reserva'}
@@ -467,17 +464,6 @@ const styles = {
     textDecoration: 'none',
     fontWeight: 'bold'
   },
-  botonChat: {
-    display: 'inline-block',
-    marginTop: '0.6rem',
-    padding: '0.6rem 1.2rem',
-    backgroundColor: '#1a1a2e',
-    color: 'white',
-    textDecoration: 'none',
-    borderRadius: '4px',
-    fontSize: '0.9rem',
-    fontWeight: 'bold'
-  },
   seccionReserva: {
     marginTop: '1.5rem',
     paddingTop: '1.5rem',
@@ -549,16 +535,6 @@ const styles = {
     color: '#b26a00',
     fontSize: '0.85rem',
     margin: '-1rem 0 1.5rem 0'
-  },
-  botonReservar: {
-    padding: '0.8rem',
-    backgroundColor: '#e94560',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    fontSize: '1rem',
-    fontWeight: 'bold',
-    cursor: 'pointer'
   },
   error: {
     backgroundColor: '#ffe0e0',

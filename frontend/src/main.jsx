@@ -9,14 +9,13 @@ import DetallePropiedades from './pages/DetallePropiedades'
 import Login from './pages/Login'
 import Registro from './pages/Registro'
 import PanelAdmin from './pages/PanelAdmin'
-import ConsultasAvanzadas from './pages/ConsultasAvanzadas'
 import Mensajes from './pages/Mensajes'
 import ChatConversacion from './pages/ChatConversacion'
 import MisReservas from './pages/MisReservas'
 import ContratoDigital from './pages/ContratoDigital'
-import AsistenteIA from './pages/AsistenteIA'
 import RutaProtegida from './components/RutaProtegida'
 import './index.css'
+import './botones.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -32,11 +31,6 @@ createRoot(document.getElementById('root')).render(
           <Route path="/admin"           element={
             <RutaProtegida rol="anfitrion">
               <PanelAdmin />
-            </RutaProtegida>
-          } />
-          <Route path="/admin/consultas-avanzadas" element={
-            <RutaProtegida rol="anfitrion">
-              <ConsultasAvanzadas />
             </RutaProtegida>
           } />
           <Route path="/mensajes" element={
@@ -57,11 +51,6 @@ createRoot(document.getElementById('root')).render(
           <Route path="/contrato/:id_contrato" element={
             <RutaProtegida>
               <ContratoDigital />
-            </RutaProtegida>
-          } />
-          <Route path="/admin/asistente-ia" element={
-            <RutaProtegida rol="anfitrion">
-              <AsistenteIA />
             </RutaProtegida>
           } />
         </Routes>

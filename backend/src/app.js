@@ -11,12 +11,10 @@ import contratosRouter      from './routes/contratos.js'
 import pagosRouter          from './routes/pagos.js'
 import calificacionesRouter from './routes/calificaciones.js'
 import imagenesRouter       from './routes/imagenes.js'
-import consultasRouter      from './routes/consultasAvanzadas.js'
 import transaccionesRouter  from './routes/transacciones.js'
 import mensajesRouter       from './routes/mensajes.js'
 import comprobantesRouter   from './routes/comprobantes.js'
 import pagosStripeRouter    from './routes/pagosStripe.js'
-import asistenteIARouter    from './routes/asistenteIA.js'
 import preciosRouter        from './routes/precios.js'
 
 dotenv.config()
@@ -34,12 +32,10 @@ app.use('/api/contratos',      contratosRouter)
 app.use('/api/pagos',          pagosRouter)
 app.use('/api/calificaciones', calificacionesRouter)
 app.use('/api/imagenes',       imagenesRouter)
-app.use('/api/consultas-avanzadas', consultasRouter)
 app.use('/api/transacciones', transaccionesRouter)
 app.use('/api/mensajes',      mensajesRouter)
 app.use('/api/comprobantes',  comprobantesRouter)
 app.use('/api/pagos-stripe',  pagosStripeRouter)
-app.use('/api/asistente',     asistenteIARouter)
 app.use('/api/precios',       preciosRouter)
 
 app.get('/', (req, res) => {

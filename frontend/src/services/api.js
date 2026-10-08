@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { supabase } from './supabaseClient'
 
 const api = axios.create({
   baseURL: 'https://rentafacil-hn-backend.onrender.com/api'
@@ -8,7 +9,13 @@ export const getPropiedades = () => api.get('/propiedades')
 export const getPropiedad = (id) => api.get(`/propiedades/${id}`)
 export const createPropiedad = (data) => api.post('/propiedades', data)
 export const updatePropiedad = (id, data) => api.put(`/propiedades/${id}`, data)
-export const deletePropiedad = (id) => api.delete(`/propiedades/${id}`)
+export const deletePropiedad = async (id) => {
+  const { data } = await supabase.auth.getSession()
+  const token = data?.session?.access_token
+  return api.delete(`/propiedades/${id}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  })
+}
 
 export const getUbicaciones = () => api.get('/ubicaciones')
 export const createUbicacion = (data) => api.post('/ubicaciones', data)
@@ -47,8 +54,6 @@ export const setImagenPortada = (id_imagen) => api.put(`/imagenes/${id_imagen}/p
 export const getCalificaciones = () => api.get('/calificaciones')
 export const createCalificacion = (data) => api.post('/calificaciones', data)
 
-export const getConsultasAvanzadas = () => api.get('/consultas-avanzadas')
-export const runConsultaAvanzada = (id) => api.get(`/consultas-avanzadas/${id}`)
 export const aprobarReserva = (data) => api.post('/transacciones/aprobar-reserva', data)
 export const registrarPago = (data) => api.post('/transacciones/registrar-pago', data)
 export const cancelarContrato = (data) => api.post('/transacciones/cancelar-contrato', data)
@@ -77,7 +82,5 @@ export const verificarSesionPago = (data) => api.post('/pagos-stripe/verificar-s
 export const cotizarEstadia = (data) => api.post('/precios/cotizar', data)
 export const simularPrecios = (data) => api.post('/precios/simular', data)
 
-// Asistente de IA (gestión de proyectos)
-export const consultarAsistente = (pregunta) => api.post('/asistente/consultar', { pregunta })
 
 export default api

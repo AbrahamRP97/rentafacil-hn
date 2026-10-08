@@ -45,6 +45,7 @@ function Registro() {
 
     setCargando(true)
 
+    // Paso 1: crear el usuario en Supabase Auth
     const { error: errorRegistro, data } = await registrar({
       email: form.email,
       password: form.password,
@@ -62,6 +63,7 @@ function Registro() {
       return
     }
 
+    // Paso 2: crear el registro real en propietarios o inquilinos, ligado al usuario recién creado
     try {
       const datosPerfil = {
         nombre: form.nombre,
@@ -201,7 +203,7 @@ function Registro() {
             />
           </div>
 
-          <button onClick={handleSubmit} style={styles.boton} disabled={cargando}>
+          <button onClick={handleSubmit} className="btn btn-primario btn-block" disabled={cargando}>
             {cargando ? 'Creando cuenta...' : 'Crear cuenta'}
           </button>
 
@@ -288,17 +290,6 @@ const styles = {
     border: '1px solid #ddd',
     fontSize: '1rem',
     outline: 'none'
-  },
-  boton: {
-    padding: '0.8rem',
-    backgroundColor: '#e94560',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    fontSize: '1rem',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    marginTop: '0.5rem'
   },
   loginLink: {
     textAlign: 'center',

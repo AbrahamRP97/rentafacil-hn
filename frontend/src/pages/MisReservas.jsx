@@ -45,7 +45,6 @@ function MisReservas() {
     cargarDatos()
   }, [])
 
-  // Si venimos de un pago con tarjeta exitoso (redirigido desde Stripe), lo confirmamos y registramos
   useEffect(() => {
     const pago = searchParams.get('pago')
     const sessionId = searchParams.get('session_id')
@@ -72,7 +71,6 @@ function MisReservas() {
       setError('El pago con tarjeta fue cancelado.')
       setSearchParams({})
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (!usuario || loading) return <p style={styles.mensaje}>Cargando tus reservas...</p>
@@ -119,8 +117,6 @@ function MisReservas() {
 
     try {
       if (datos.metodo_pago === 'tarjeta') {
-        // Pago real con Stripe: se crea la sesión y se redirige a la página de pago de Stripe.
-        // El pago se registra en nuestra BD solo después de confirmarse (ver useEffect de arriba).
         const res = await crearSesionPago({
           id_contrato,
           monto: parseFloat(datos.monto),
@@ -321,7 +317,7 @@ function MisReservas() {
 
                       <button
                         onClick={() => handleRegistrarPago(r)}
-                        style={styles.botonPagar}
+                        className="btn btn-primario btn-sm"
                         disabled={procesando === r.contrato.id_contrato}
                       >
                         {procesando === r.contrato.id_contrato
@@ -331,12 +327,12 @@ function MisReservas() {
                     </div>
 
                     <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.8rem' }}>
-                      <Link to={`/contrato/${r.contrato.id_contrato}`} style={styles.botonVerContrato}>
+                      <Link to={`/contrato/${r.contrato.id_contrato}`} className="btn btn-secundario btn-sm">
                         Ver / firmar contrato
                       </Link>
                       <button
                         onClick={() => handleCancelar(r)}
-                        style={styles.botonCancelar}
+                        className="btn btn-peligro btn-sm"
                         disabled={procesando === r.contrato.id_contrato}
                       >
                         Cancelar este contrato
@@ -389,7 +385,7 @@ function MisReservas() {
                           />
                           <button
                             onClick={() => handleEnviarCalificacion(r.contrato.id_contrato)}
-                            style={styles.botonEnviarCalificacion}
+                            className="btn btn-primario btn-sm"
                             disabled={enviandoCalificacion === r.contrato.id_contrato}
                           >
                             {enviandoCalificacion === r.contrato.id_contrato ? 'Enviando...' : 'Enviar calificación'}
@@ -493,37 +489,6 @@ const styles = {
     fontSize: '0.85rem',
     flex: '1 1 140px'
   },
-  botonPagar: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#28a745',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    fontSize: '0.85rem'
-  },
-  botonCancelar: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#e94560',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    fontSize: '0.85rem'
-  },
-  botonVerContrato: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#1a1a2e',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    fontSize: '0.85rem',
-    textDecoration: 'none'
-  },
   avisoCancelado: {
     color: '#e94560',
     fontSize: '0.85rem',
@@ -580,17 +545,6 @@ const styles = {
     fontSize: '0.85rem',
     minHeight: '60px',
     resize: 'vertical'
-  },
-  botonEnviarCalificacion: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#1a1a2e',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    fontSize: '0.85rem',
-    alignSelf: 'flex-start'
   },
   error: {
     backgroundColor: '#ffe0e0',

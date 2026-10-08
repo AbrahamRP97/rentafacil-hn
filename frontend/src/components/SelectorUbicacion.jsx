@@ -22,7 +22,6 @@ const fueraDeHonduras = (lat, lng) =>
   lat < LIMITES_HONDURAS.latMin || lat > LIMITES_HONDURAS.latMax ||
   lng < LIMITES_HONDURAS.lngMin || lng > LIMITES_HONDURAS.lngMax
 
-// Captura los clics sobre el mapa para colocar el pin
 function CapturaClics({ onElegir }) {
   useMapEvents({
     click(e) {
@@ -32,6 +31,7 @@ function CapturaClics({ onElegir }) {
   return null
 }
 
+// Mueve la vista del mapa cuando el pin se coloca desde fuera (búsqueda o GPS)
 function Recentrar({ destino }) {
   const map = useMap()
   useEffect(() => {
@@ -41,10 +41,6 @@ function Recentrar({ destino }) {
 }
 
 // Mapa donde el propietario ubica su propiedad con un pin.
-//  - Clic en el mapa: coloca o mueve el pin. El pin también se puede arrastrar.
-//  - "Buscar esta dirección": pre-coloca el pin a partir de lo escrito en el formulario.
-//  - "Usar mi ubicación": pre-coloca el pin con el GPS del dispositivo.
-// El pin del propietario es la fuente de verdad: lo que quede en el mapa es lo que se guarda.
 function SelectorUbicacion({ latitud, longitud, onChange, departamento, municipio, direccion }) {
   const [buscando, setBuscando] = useState(false)
   const [mensaje, setMensaje] = useState(null) // { tipo: 'ok' | 'aviso' | 'error', texto }
@@ -112,10 +108,10 @@ function SelectorUbicacion({ latitud, longitud, onChange, departamento, municipi
       </p>
 
       <div style={styles.botones}>
-        <button type="button" onClick={buscarDireccion} disabled={buscando || !puedeBuscar} style={styles.boton}>
+        <button type="button" onClick={buscarDireccion} disabled={buscando || !puedeBuscar} className="btn btn-primario btn-sm">
           {buscando ? 'Buscando...' : '🔍 Buscar esta dirección en el mapa'}
         </button>
-        <button type="button" onClick={usarMiUbicacion} style={styles.botonSecundario}>
+        <button type="button" onClick={usarMiUbicacion} className="btn btn-suave btn-sm">
           📍 Usar mi ubicación actual
         </button>
       </div>
@@ -181,26 +177,6 @@ const styles = {
     display: 'flex',
     gap: '0.5rem',
     flexWrap: 'wrap'
-  },
-  boton: {
-    padding: '0.5rem 0.9rem',
-    backgroundColor: '#1a1a2e',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '0.82rem',
-    fontWeight: 'bold'
-  },
-  botonSecundario: {
-    padding: '0.5rem 0.9rem',
-    backgroundColor: 'white',
-    color: '#1a1a2e',
-    border: '1px solid #1a1a2e',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '0.82rem',
-    fontWeight: 'bold'
   },
   mapa: {
     height: '320px',

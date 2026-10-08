@@ -1,0 +1,52 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  box-sizing: border-box;
+  padding: 0.6rem 1.1rem;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, opacity 0.15s;
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-sm   { padding: 0.4rem 0.8rem; font-size: 0.82rem; }
+.btn-block { display: flex; width: 100%; }
+
+/* Acción principal */
+.btn-primario { background-color: #e94560; border-color: #e94560; color: #fff; }
+.btn-primario:hover:not(:disabled) { background-color: #d03852; border-color: #d03852; }
+
+/* Acción neutra / secundaria */
+.btn-secundario { background-color: #1a1a2e; border-color: #1a1a2e; color: #fff; }
+.btn-secundario:hover:not(:disabled) { background-color: #2f2f4d; border-color: #2f2f4d; }
+
+/* Confirmar / aprobar */
+.btn-exito { background-color: #28a745; border-color: #28a745; color: #fff; }
+.btn-exito:hover:not(:disabled) { background-color: #1f8a38; border-color: #1f8a38; }
+
+/* Acciones destructivas: eliminar, rechazar, cancelar */
+.btn-peligro { background-color: #fff; border-color: #c0392b; color: #c0392b; }
+.btn-peligro:hover:not(:disabled) { background-color: #c0392b; color: #fff; }
+
+/* Sobre fondos oscuros (barra de navegación) */
+.btn-claro { background-color: transparent; border-color: #fff; color: #fff; }
+.btn-claro:hover:not(:disabled) { background-color: #fff; color: #1a1a2e; }
+
+/* Secundario suave: contorno sobre fondo claro (filtros, alternar vistas, flechas) */
+.btn-suave { background-color: #fff; border-color: #1a1a2e; color: #1a1a2e; }
+.btn-suave:hover:not(:disabled) { background-color: #1a1a2e; color: #fff; }
