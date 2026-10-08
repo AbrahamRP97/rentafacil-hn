@@ -3,10 +3,72 @@ import supabase from '../db.js'
 
 const router = Router()
 
+const USER_AGENT = 'RentaFacilHN-Proyecto-Academico/1.0'
+const CAMPOS_EDITABLES = ['departamento', 'municipio', 'direccion', 'codigo_postal', 'latitud', 'longitud']
+
+// Busca un texto en Nominatim (OpenStreetMap), limitado a Honduras.
+// Devuelve { latitud, longitud } o null si no hay resultados.
+async function buscarEnNominatim(consulta) {
+  const url =
+    'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=hn&q=' +
+    encodeURIComponent(consulta)
+  const respuesta = await fetch(url, { headers: { 'User-Agent': USER_AGENT } })
+  if (!respuesta.ok) throw new Error(`Nominatim respondió ${respuesta.status}`)
+  const datos = await respuesta.json()
+  if (!Array.isArray(datos) || datos.length === 0) return null
+  return { latitud: parseFloat(datos[0].lat), longitud: parseFloat(datos[0].lon) }
+}
+
+const vacio = (v) => v === undefined || v === null || v === ''
+
+// Valida un par de coordenadas. Devuelve { ok, latitud, longitud } o { ok:false, error }.
+function validarCoordenadas(latitud, longitud) {
+  if (vacio(latitud) && vacio(longitud)) return { ok: true, latitud: null, longitud: null }
+  if (vacio(latitud) !== vacio(longitud)) {
+    return { ok: false, error: 'latitud y longitud deben enviarse juntas' }
+  }
+  const lat = Number(latitud)
+  const lng = Number(longitud)
+  if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
+    return { ok: false, error: 'latitud inválida (debe estar entre -90 y 90)' }
+  }
+  if (!Number.isFinite(lng) || lng < -180 || lng > 180) {
+    return { ok: false, error: 'longitud inválida (debe estar entre -180 y 180)' }
+  }
+  return { ok: true, latitud: lat, longitud: lng }
+}
+
 router.get('/', async (req, res) => {
   const { data, error } = await supabase.from('ubicaciones').select('*')
   if (error) return res.status(500).json({ error: error.message })
   res.json(data)
+})
+
+// POST /geocodificar — ayuda para pre-colocar el pin a partir de la dirección escrita.
+router.post('/geocodificar', async (req, res) => {
+  const { departamento = '', municipio = '', direccion = '' } = req.body
+
+  if (!municipio.trim() && !direccion.trim()) {
+    return res.status(400).json({ error: 'Escribe al menos el municipio o la dirección' })
+  }
+
+  try {
+    if (direccion.trim()) {
+      const exacta = await buscarEnNominatim(
+        `${direccion}, ${municipio}, ${departamento}, Honduras`
+      )
+      if (exacta) return res.json({ ...exacta, aproximada: false })
+    }
+
+    if (municipio.trim()) {
+      const aproximada = await buscarEnNominatim(`${municipio}, ${departamento}, Honduras`)
+      if (aproximada) return res.json({ ...aproximada, aproximada: true })
+    }
+
+    res.status(404).json({ error: 'No se encontró esa dirección en el mapa' })
+  } catch (err) {
+    res.status(502).json({ error: 'El servicio de mapas no respondió. Coloca el pin manualmente.' })
+  }
 })
 
 router.get('/:id', async (req, res) => {
@@ -19,8 +81,7 @@ router.get('/:id', async (req, res) => {
   res.json(data)
 })
 
-// POST — crea la ubicación y, si no vienen coordenadas, las obtiene automáticamente
-// geocodificando la dirección con el servicio gratuito de OpenStreetMap (Nominatim)
+// POST — crea la ubicación.
 router.post('/', async (req, res) => {
   const { departamento, municipio, direccion, codigo_postal = null } = req.body
 
@@ -28,25 +89,19 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'departamento, municipio y direccion son obligatorios' })
   }
 
-  let latitud = req.body.latitud || null
-  let longitud = req.body.longitud || null
+  const coords = validarCoordenadas(req.body.latitud, req.body.longitud)
+  if (!coords.ok) return res.status(400).json({ error: coords.error })
 
-  if (!latitud || !longitud) {
+  let { latitud, longitud } = coords
+
+  if (latitud === null) {
     try {
-      const consulta = encodeURIComponent(`${direccion}, ${municipio}, ${departamento}, Honduras`)
-      const geoRes = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${consulta}`,
-        { headers: { 'User-Agent': 'RentaFacilHN-Proyecto-Academico/1.0' } }
+      const encontrada = await buscarEnNominatim(
+        `${direccion}, ${municipio}, ${departamento}, Honduras`
       )
-      const geoData = await geoRes.json()
-      if (geoData.length > 0) {
-        latitud = parseFloat(geoData[0].lat)
-        longitud = parseFloat(geoData[0].lon)
-      }
+      if (encontrada) ({ latitud, longitud } = encontrada)
     } catch (err) {
-      // Si el servicio de geocodificación falla, la ubicación se crea igual,
-      // simplemente sin coordenadas (no bloquea la creación de la propiedad)
-    }
+      }
   }
 
   const { data, error } = await supabase
@@ -58,13 +113,32 @@ router.post('/', async (req, res) => {
   res.status(201).json(data[0])
 })
 
+
 router.put('/:id', async (req, res) => {
+  const cambios = {}
+  for (const campo of CAMPOS_EDITABLES) {
+    if (campo in req.body) cambios[campo] = req.body[campo]
+  }
+
+  if ('latitud' in cambios || 'longitud' in cambios) {
+    const coords = validarCoordenadas(cambios.latitud, cambios.longitud)
+    if (!coords.ok) return res.status(400).json({ error: coords.error })
+    cambios.latitud = coords.latitud
+    cambios.longitud = coords.longitud
+  }
+
+  if (Object.keys(cambios).length === 0) {
+    return res.status(400).json({ error: 'No hay campos válidos para actualizar' })
+  }
+
   const { data, error } = await supabase
     .from('ubicaciones')
-    .update(req.body)
+    .update(cambios)
     .eq('id_ubicacion', req.params.id)
     .select()
+
   if (error) return res.status(500).json({ error: error.message })
+  if (!data || data.length === 0) return res.status(404).json({ error: 'Ubicación no encontrada' })
   res.json(data[0])
 })
 

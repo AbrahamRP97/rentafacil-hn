@@ -12,6 +12,8 @@ export const deletePropiedad = (id) => api.delete(`/propiedades/${id}`)
 
 export const getUbicaciones = () => api.get('/ubicaciones')
 export const createUbicacion = (data) => api.post('/ubicaciones', data)
+export const updateUbicacion = (id, data) => api.put(`/ubicaciones/${id}`, data)
+export const geocodificarDireccion = (data) => api.post('/ubicaciones/geocodificar', data)
 
 export const getPropietarios = () => api.get('/propietarios')
 export const getPropietario = (id) => api.get(`/propietarios/${id}`)

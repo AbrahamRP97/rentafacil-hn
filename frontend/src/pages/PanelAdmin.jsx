@@ -4,8 +4,9 @@ import { useAuth } from '../context/AuthContext'
 import { getPropiedades, getReservas, getContratos, getPagos, createPropiedad,
   getImagenes, uploadImagen, deleteImagen, setImagenPortada, getPropietarioPorAuth,
   aprobarReserva, updateReserva, enviarMensaje, cancelarContrato, createUbicacion,
-  createCalificacion, updatePropiedad } from '../services/api'
+  createCalificacion, updatePropiedad, updateUbicacion } from '../services/api'
 import SimuladorPrecios from '../components/SimuladorPrecios'
+import SelectorUbicacion from '../components/SelectorUbicacion'
 
 function PanelAdmin() {
   const { usuario } = useAuth()
@@ -64,6 +65,9 @@ function PanelAdmin() {
     municipio: '',
     direccion: ''
   })
+
+  // Pin de ubicación que el propietario coloca en el mapa al crear una propiedad
+  const [coordenadas, setCoordenadas] = useState({ latitud: null, longitud: null })
 
   const [imagenesNuevas, setImagenesNuevas] = useState([])
 
@@ -347,7 +351,12 @@ function PanelAdmin() {
       banos: String(p.banos ?? ''),
       metros_cuadrados: p.metros_cuadrados != null ? String(p.metros_cuadrados) : '',
       acepta_estadias_cortas: p.acepta_estadias_cortas !== false,
-      estancia_minima_noches: String(p.estancia_minima_noches ?? 1)
+      estancia_minima_noches: String(p.estancia_minima_noches ?? 1),
+      departamento: p.UBICACIONES?.departamento || '',
+      municipio: p.UBICACIONES?.municipio || '',
+      direccion: p.UBICACIONES?.direccion || '',
+      latitud: p.UBICACIONES?.latitud ?? null,
+      longitud: p.UBICACIONES?.longitud ?? null
     })
   }
 
@@ -373,10 +382,45 @@ function PanelAdmin() {
       setErrorEdicion('La estancia mínima debe ser de al menos 1 noche')
       return
     }
+    if (!formEdicion.departamento.trim() || !formEdicion.municipio.trim() || !formEdicion.direccion.trim()) {
+      setErrorEdicion('El departamento, el municipio y la dirección son obligatorios')
+      return
+    }
 
     setGuardandoEdicion(true)
     try {
+      // Ubicación: solo se toca si el propietario cambió la dirección o el pin
+      const u = propiedadEditando.UBICACIONES || {}
+      const num = (v) => (v === null || v === undefined || v === '' ? null : Number(v))
+      const datosUbicacion = {
+        departamento: formEdicion.departamento.trim(),
+        municipio: formEdicion.municipio.trim(),
+        direccion: formEdicion.direccion.trim(),
+        latitud: num(formEdicion.latitud),
+        longitud: num(formEdicion.longitud)
+      }
+      const cambioUbicacion =
+        datosUbicacion.departamento !== (u.departamento || '') ||
+        datosUbicacion.municipio !== (u.municipio || '') ||
+        datosUbicacion.direccion !== (u.direccion || '') ||
+        datosUbicacion.latitud !== num(u.latitud) ||
+        datosUbicacion.longitud !== num(u.longitud)
+
+      let idUbicacion = propiedadEditando.id_ubicacion
+      if (cambioUbicacion) {
+        // Si otra propiedad comparte esta misma ubicación (datos antiguos), no se modifica:
+        // se crea una ubicación nueva para esta propiedad y se vincula a ella.
+        const compartida = propiedades.filter(x => x.id_ubicacion === idUbicacion).length > 1
+        if (compartida || !idUbicacion) {
+          const resNueva = await createUbicacion(datosUbicacion)
+          idUbicacion = resNueva.data.id_ubicacion
+        } else {
+          await updateUbicacion(idUbicacion, datosUbicacion)
+        }
+      }
+
       await updatePropiedad(propiedadEditando.id_propiedad, {
+        id_ubicacion: idUbicacion,
         titulo: formEdicion.titulo.trim(),
         descripcion: formEdicion.descripcion,
         tipo: formEdicion.tipo,
@@ -427,7 +471,9 @@ function PanelAdmin() {
       const resUbicacion = await createUbicacion({
         departamento: form.departamento,
         municipio: form.municipio,
-        direccion: form.direccion
+        direccion: form.direccion,
+        latitud: coordenadas.latitud,
+        longitud: coordenadas.longitud
       })
       const idNuevaUbicacion = resUbicacion.data.id_ubicacion
 
@@ -468,6 +514,7 @@ function PanelAdmin() {
         acepta_estadias_cortas: true, estancia_minima_noches: '1',
         departamento: '', municipio: '', direccion: ''
       })
+      setCoordenadas({ latitud: null, longitud: null })
       imagenesNuevas.forEach(img => URL.revokeObjectURL(img.previewUrl))
       setImagenesNuevas([])
       cargarDatos()
@@ -837,6 +884,18 @@ function PanelAdmin() {
               <input type="text" name="direccion" value={form.direccion} onChange={handleChange} placeholder="Colonia Trejo, calle principal, casa #12" style={styles.input} />
             </div>
 
+            <div style={styles.campo}>
+              <label style={styles.label}>Ubicación exacta en el mapa</label>
+              <SelectorUbicacion
+                latitud={coordenadas.latitud}
+                longitud={coordenadas.longitud}
+                onChange={setCoordenadas}
+                departamento={form.departamento}
+                municipio={form.municipio}
+                direccion={form.direccion}
+              />
+            </div>
+
             <div style={styles.agregarImagen}>
               <h4 style={{ margin: '0 0 1rem 0', color: '#1a1a2e' }}>Imágenes de la propiedad</h4>
               <div style={styles.campo}>
@@ -1079,6 +1138,33 @@ function PanelAdmin() {
                   </div>
                 </div>
 
+                <div style={styles.fila}>
+                  <div style={styles.campo}>
+                    <label style={styles.label}>Departamento *</label>
+                    <input name="departamento" value={formEdicion.departamento} onChange={handleCambioEdicion} style={styles.input} />
+                  </div>
+                  <div style={styles.campo}>
+                    <label style={styles.label}>Municipio *</label>
+                    <input name="municipio" value={formEdicion.municipio} onChange={handleCambioEdicion} style={styles.input} />
+                  </div>
+                </div>
+                <div style={styles.campo}>
+                  <label style={styles.label}>Dirección exacta *</label>
+                  <input name="direccion" value={formEdicion.direccion} onChange={handleCambioEdicion} style={styles.input} />
+                </div>
+
+                <div style={styles.campo}>
+                  <label style={styles.label}>Ubicación exacta en el mapa</label>
+                  <SelectorUbicacion
+                    latitud={formEdicion.latitud}
+                    longitud={formEdicion.longitud}
+                    onChange={({ latitud, longitud }) => setFormEdicion(f => ({ ...f, latitud, longitud }))}
+                    departamento={formEdicion.departamento}
+                    municipio={formEdicion.municipio}
+                    direccion={formEdicion.direccion}
+                  />
+                </div>
+
                 <div style={styles.campo}>
                   <label style={styles.label}>Renta mensual que deseas recibir (L.) *</label>
                   <input type="number" name="precio_mensual" value={formEdicion.precio_mensual} onChange={handleCambioEdicion} style={styles.input} />
@@ -1112,7 +1198,7 @@ function PanelAdmin() {
                 </div>
 
                 <p style={styles.notaEdicion}>
-                  El estado de la propiedad y su dirección no se editan aquí: el estado cambia solo con las
+                  El estado de la propiedad no se edita aquí: cambia solo con las
                   reservas y contratos.
                 </p>
 
