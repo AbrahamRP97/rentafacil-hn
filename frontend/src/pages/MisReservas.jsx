@@ -5,6 +5,8 @@ import { getInquilinoPorAuth, getReservas, getContratos, getPagos,
   registrarPago, cancelarContrato, enviarMensaje,
   subirComprobante, crearSesionPago, verificarSesionPago, createCalificacion } from '../services/api'
 
+const LIMITE_EFECTIVO = 10000
+
 function MisReservas() {
   const { usuario } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -71,6 +73,7 @@ function MisReservas() {
       setError('El pago con tarjeta fue cancelado.')
       setSearchParams({})
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (!usuario || loading) return <p style={styles.mensaje}>Cargando tus reservas...</p>
@@ -88,7 +91,9 @@ function MisReservas() {
   const reservasConDetalle = misReservas.map(r => {
     const contrato = contratos.find(c => c.id_reserva === r.id_reserva)
     const pagosDelContrato = contrato ? pagos.filter(p => p.id_contrato === contrato.id_contrato) : []
-    const totalPagado = pagosDelContrato.reduce((suma, p) => suma + parseFloat(p.monto), 0)
+    const totalPagado = pagosDelContrato
+      .filter(p => p.estado === 'completado')
+      .reduce((suma, p) => suma + parseFloat(p.monto), 0)
     return { ...r, contrato, pagosDelContrato, totalPagado }
   })
 
@@ -109,6 +114,11 @@ function MisReservas() {
 
     if (!datos.monto || !datos.metodo_pago) {
       setError('Completa el monto y el método de pago')
+      return
+    }
+
+    if (datos.metodo_pago === 'efectivo' && parseFloat(datos.monto) > LIMITE_EFECTIVO) {
+      setError('El pago en efectivo no puede superar L. 10,000.00. Para montos mayores usa transferencia o tarjeta.')
       return
     }
 
@@ -149,13 +159,25 @@ function MisReservas() {
         referencia
       })
 
+      if (datos.metodo_pago === 'efectivo') {
+        await enviarMensaje({
+          id_propiedad: reserva.id_propiedad,
+          id_propietario: reserva.PROPIEDADES?.id_propietario,
+          id_inquilino: reserva.id_inquilino,
+          remitente: 'inquilino',
+          contenido: `💵 Avisé un pago en efectivo de L. ${parseFloat(datos.monto).toFixed(2)} por "${reserva.PROPIEDADES?.titulo}". Por favor confírmalo en tu panel cuando lo recibas.`
+        }).catch(() => {})
+      }
+
       setFormPago({ ...formPago, [id_contrato]: {} })
       setArchivoComprobante({ ...archivoComprobante, [id_contrato]: null })
-      setExito('Pago registrado correctamente')
+      setExito(datos.metodo_pago === 'efectivo'
+        ? 'Aviso enviado. El pago contará cuando el propietario confirme que recibió el efectivo.'
+        : 'Pago registrado correctamente')
       cargarDatos()
-      setTimeout(() => setExito(null), 3000)
+      setTimeout(() => setExito(null), 5000)
     } catch (err) {
-      setError('Error al registrar el pago. Intenta de nuevo.')
+      setError(err.response?.data?.error || 'Error al registrar el pago. Intenta de nuevo.')
     } finally {
       setProcesando(null)
     }
@@ -269,8 +291,19 @@ function MisReservas() {
                         {r.pagosDelContrato.map(p => (
                           <p key={p.id_pago} style={styles.itemPago}>
                             L. {p.monto} — {p.metodo_pago} — {p.fecha_pago}
+                            {p.estado === 'pendiente' && (
+                              <span style={styles.etiquetaPendiente}>⏳ Pendiente de confirmación del propietario</span>
+                            )}
+                            {p.estado === 'fallido' && (
+                              <span style={styles.etiquetaRechazado}>
+                                ✕ No confirmado por el propietario{p.nota_resolucion ? `: ${p.nota_resolucion}` : ''}
+                              </span>
+                            )}
                             {p.referencia && p.referencia.startsWith('http') && (
                               <> — <a href={p.referencia} target="_blank" rel="noreferrer" style={styles.linkComprobante}>Ver comprobante</a></>
+                            )}
+                            {p.estado === 'completado' && (
+                              <> — <Link to={`/recibo/${p.id_pago}`} style={styles.linkComprobante}>Ver recibo</Link></>
                             )}
                           </p>
                         ))}
@@ -305,6 +338,13 @@ function MisReservas() {
                         />
                       )}
 
+                      {metodoSeleccionado === 'efectivo' && (
+                        <p style={styles.avisoEfectivo}>
+                          💵 Máximo L. 10,000.00 por pago en efectivo. Entrega el dinero solo contra un recibo:
+                          el pago cuenta cuando el propietario confirme que lo recibió.
+                        </p>
+                      )}
+
                       {metodoSeleccionado !== 'tarjeta' && metodoSeleccionado !== 'transferencia' && (
                         <input
                           type="text"
@@ -322,7 +362,8 @@ function MisReservas() {
                       >
                         {procesando === r.contrato.id_contrato
                           ? 'Procesando...'
-                          : metodoSeleccionado === 'tarjeta' ? 'Pagar con tarjeta' : 'Registrar pago'}
+                          : metodoSeleccionado === 'tarjeta' ? 'Pagar con tarjeta'
+                          : metodoSeleccionado === 'efectivo' ? 'Avisar pago en efectivo' : 'Registrar pago'}
                       </button>
                     </div>
 
@@ -405,6 +446,35 @@ function MisReservas() {
 }
 
 const styles = {
+  avisoEfectivo: {
+    flexBasis: '100%',
+    margin: 0,
+    padding: '0.6rem 0.8rem',
+    backgroundColor: '#fff8e1',
+    border: '1px solid #ffe08a',
+    borderRadius: '4px',
+    fontSize: '0.85rem',
+    color: '#6b5200',
+    lineHeight: 1.4
+  },
+  etiquetaPendiente: {
+    marginLeft: '0.5rem',
+    padding: '0.1rem 0.5rem',
+    backgroundColor: '#ffc107',
+    color: '#4a3a00',
+    borderRadius: '10px',
+    fontSize: '0.75rem',
+    fontWeight: 'bold'
+  },
+  etiquetaRechazado: {
+    marginLeft: '0.5rem',
+    padding: '0.1rem 0.5rem',
+    backgroundColor: '#fde2e2',
+    color: '#c0392b',
+    borderRadius: '10px',
+    fontSize: '0.75rem',
+    fontWeight: 'bold'
+  },
   container: {
     padding: '2rem',
     fontFamily: 'sans-serif',

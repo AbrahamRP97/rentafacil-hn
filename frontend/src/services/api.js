@@ -57,6 +57,8 @@ export const createCalificacion = (data) => api.post('/calificaciones', data)
 export const aprobarReserva = (data) => api.post('/transacciones/aprobar-reserva', data)
 export const registrarPago = (data) => api.post('/transacciones/registrar-pago', data)
 export const cancelarContrato = (data) => api.post('/transacciones/cancelar-contrato', data)
+export const resolverPagoEfectivo = async (data) =>
+  api.post('/transacciones/resolver-pago-efectivo', data, { headers: await authHeaders() })
 
 // Chat interno
 export const getConversacionesPropietario = (id_propietario) =>
@@ -85,6 +87,7 @@ export const simularPrecios = (data) => api.post('/precios/simular', data)
 
 export default api
 
+// Perfil del usuario (usa el token de sesión para identificar quién es)
 const authHeaders = async () => {
   const { data } = await supabase.auth.getSession()
   const token = data?.session?.access_token

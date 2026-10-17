@@ -14,6 +14,7 @@ import ChatConversacion from './pages/ChatConversacion'
 import MisReservas from './pages/MisReservas'
 import ContratoDigital from './pages/ContratoDigital'
 import MiPerfil from './pages/MiPerfil'
+import ReciboPago from './pages/ReciboPago'
 import RutaProtegida from './components/RutaProtegida'
 import './index.css'
 import './botones.css'
@@ -52,6 +53,11 @@ createRoot(document.getElementById('root')).render(
           <Route path="/perfil" element={
             <RutaProtegida>
               <MiPerfil />
+            </RutaProtegida>
+          } />
+          <Route path="/recibo/:id_pago" element={
+            <RutaProtegida>
+              <ReciboPago />
             </RutaProtegida>
           } />
           <Route path="/contrato/:id_contrato" element={

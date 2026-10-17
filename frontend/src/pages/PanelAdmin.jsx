@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { getPropiedades, getReservas, getContratos, getPagos, createPropiedad,
   getImagenes, uploadImagen, deleteImagen, setImagenPortada, getPropietarioPorAuth,
   aprobarReserva, updateReserva, enviarMensaje, cancelarContrato, createUbicacion,
-  createCalificacion, updatePropiedad, updateUbicacion, deletePropiedad } from '../services/api'
+  createCalificacion, updatePropiedad, updateUbicacion, deletePropiedad, resolverPagoEfectivo } from '../services/api'
 import SimuladorPrecios from '../components/SimuladorPrecios'
 import SelectorUbicacion from '../components/SelectorUbicacion'
 
@@ -43,6 +43,9 @@ function PanelAdmin() {
   const [subiendoImagen, setSubiendoImagen] = useState(false)
   const [exito, setExito] = useState(false)
   const [propiedadAEliminar, setPropiedadAEliminar] = useState(null)
+  const [procesandoPago, setProcesandoPago] = useState(null)
+  const [pagoARechazar, setPagoARechazar] = useState(null)
+  const [notaRechazoPago, setNotaRechazoPago] = useState('')
   const [eliminando, setEliminando] = useState(false)
   const [errorEliminar, setErrorEliminar] = useState(null)
 
@@ -102,6 +105,8 @@ function PanelAdmin() {
     }).catch(() => setLoading(false))
   }
 
+  // Cruza propiedades -> reservas -> contratos -> pagos, todo filtrado
+  // al propietario que inició sesión
   useEffect(() => {
     if (!propietarioActual) {
       setPropiedadesPropias([])
@@ -135,6 +140,11 @@ function PanelAdmin() {
     const contratoRelacionado = contratosConDetalle.find(c => c.id_contrato === p.id_contrato)
     return { ...p, contrato: contratoRelacionado }
   }).sort((a, b) => new Date(b.fecha_pago) - new Date(a.fecha_pago))
+
+  const pagosEfectivoPendientes = pagosConDetalle.filter(
+    p => p.metodo_pago === 'efectivo' && p.estado === 'pendiente'
+  )
+  const pagosCompletados = pagosConDetalle.filter(p => p.estado === 'completado')
 
   const cargarImagenes = async (id_propiedad) => {
     try {
@@ -175,6 +185,38 @@ function PanelAdmin() {
       setError('Error al subir una o más imágenes')
     } finally {
       setSubiendoImagen(false)
+    }
+  }
+
+  const handleResolverPagoEfectivo = async (pago, aceptar, nota = null) => {
+    setProcesandoPago(pago.id_pago)
+    setError(null)
+    try {
+      await resolverPagoEfectivo({ id_pago: pago.id_pago, aceptar, nota })
+
+      const reserva = pago.contrato?.reserva
+      if (reserva) {
+        const contenido = aceptar
+          ? `✅ El propietario confirmó tu pago en efectivo de L. ${parseFloat(pago.monto).toFixed(2)} por "${reserva.PROPIEDADES?.titulo}". Ya puedes ver tu recibo en "Mis reservas".`
+          : `❌ El propietario indicó que NO recibió tu pago en efectivo de L. ${parseFloat(pago.monto).toFixed(2)} por "${reserva.PROPIEDADES?.titulo}".${nota ? ` Motivo: ${nota}` : ''}`
+        await enviarMensaje({
+          id_propiedad: reserva.id_propiedad,
+          id_propietario: reserva.PROPIEDADES?.id_propietario,
+          id_inquilino: reserva.id_inquilino,
+          remitente: 'propietario',
+          contenido
+        }).catch(() => {})
+      }
+
+      setPagoARechazar(null)
+      setNotaRechazoPago('')
+      setExitoEdicion(aceptar ? 'Pago en efectivo confirmado' : 'Pago en efectivo rechazado')
+      setTimeout(() => setExitoEdicion(null), 4000)
+      cargarDatos()
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo resolver el pago. Intenta de nuevo.')
+    } finally {
+      setProcesandoPago(null)
     }
   }
 
@@ -409,6 +451,7 @@ function PanelAdmin() {
 
     setGuardandoEdicion(true)
     try {
+      // Ubicación: solo se toca si el propietario cambió la dirección o el pin
       const u = propiedadEditando.UBICACIONES || {}
       const num = (v) => (v === null || v === undefined || v === '' ? null : Number(v))
       const datosUbicacion = {
@@ -427,6 +470,8 @@ function PanelAdmin() {
 
       let idUbicacion = propiedadEditando.id_ubicacion
       if (cambioUbicacion) {
+        // Si otra propiedad comparte esta misma ubicación (datos antiguos), no se modifica:
+        // se crea una ubicación nueva para esta propiedad y se vincula a ella.
         const compartida = propiedades.filter(x => x.id_ubicacion === idUbicacion).length > 1
         if (compartida || !idUbicacion) {
           const resNueva = await createUbicacion(datosUbicacion)
@@ -571,7 +616,7 @@ function PanelAdmin() {
         </div>
         <div style={styles.statCard}>
           <span style={styles.statIcono}>💰</span>
-          <span style={styles.statNumero}>{pagosPropios.length}</span>
+          <span style={styles.statNumero}>{pagosPropios.filter(p => p.estado === 'completado').length}</span>
           <span style={styles.statLabel}>Mis pagos</span>
         </div>
       </div>
@@ -737,6 +782,54 @@ function PanelAdmin() {
         </div>
       )}
 
+      {pagosEfectivoPendientes.length > 0 && (
+        <div style={styles.seccion}>
+          <h3 style={styles.seccionTitulo}>💵 Pagos en efectivo por confirmar</h3>
+          <p style={styles.avisoPagos}>
+            Confirma solo cuando ya tengas el dinero en la mano. El pago cuenta en tus ingresos y se genera el recibo al confirmar.
+          </p>
+          <table style={styles.tabla}>
+            <thead>
+              <tr>
+                <th style={styles.th}>Propiedad</th>
+                <th style={styles.th}>Inquilino</th>
+                <th style={styles.th}>Monto</th>
+                <th style={styles.th}>Fecha del aviso</th>
+                <th style={styles.th}>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pagosEfectivoPendientes.map(p => (
+                <tr key={p.id_pago} style={styles.tr}>
+                  <td style={styles.td}>{p.contrato?.reserva?.PROPIEDADES?.titulo}</td>
+                  <td style={styles.td}>{p.contrato?.reserva?.INQUILINOS?.nombre} {p.contrato?.reserva?.INQUILINOS?.apellido}</td>
+                  <td style={styles.td}>L. {p.monto}</td>
+                  <td style={styles.td}>{p.fecha_pago}</td>
+                  <td style={styles.td}>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        onClick={() => handleResolverPagoEfectivo(p, true)}
+                        className="btn btn-exito btn-sm"
+                        disabled={procesandoPago === p.id_pago}
+                      >
+                        {procesandoPago === p.id_pago ? '...' : 'Confirmar recibido'}
+                      </button>
+                      <button
+                        onClick={() => { setNotaRechazoPago(''); setPagoARechazar(p) }}
+                        className="btn btn-peligro btn-sm"
+                        disabled={procesandoPago === p.id_pago}
+                      >
+                        No lo recibí
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {pagosConDetalle.length > 0 && (
         <div style={styles.seccion}>
           <div
@@ -746,7 +839,7 @@ function PanelAdmin() {
             <div>
               <h3 style={{ ...styles.seccionTitulo, margin: 0 }}>Historial de pagos</h3>
               <p style={styles.resumenPagosTexto}>
-                {pagosConDetalle.length} pago(s) · Total: L. {pagosConDetalle.reduce((s, p) => s + parseFloat(p.monto), 0).toFixed(2)}
+                {pagosCompletados.length} pago(s) confirmado(s) · Total: L. {pagosCompletados.reduce((s, p) => s + parseFloat(p.monto), 0).toFixed(2)}
               </p>
             </div>
             <span style={styles.flechaToggle}>{mostrarHistorialPagos ? '▲' : '▼'}</span>
@@ -761,7 +854,8 @@ function PanelAdmin() {
                   <th style={styles.th}>Monto</th>
                   <th style={styles.th}>Método</th>
                   <th style={styles.th}>Fecha</th>
-                  <th style={styles.th}>Comprobante</th>
+                  <th style={styles.th}>Estado</th>
+                  <th style={styles.th}>Comprobante / Recibo</th>
                 </tr>
               </thead>
               <tbody>
@@ -773,13 +867,27 @@ function PanelAdmin() {
                     <td style={styles.td}>{p.metodo_pago}</td>
                     <td style={styles.td}>{p.fecha_pago}</td>
                     <td style={styles.td}>
-                      {p.referencia && p.referencia.startsWith('http') ? (
-                        <a href={p.referencia} target="_blank" rel="noreferrer" className="btn btn-secundario btn-sm">
-                          Ver comprobante
-                        </a>
-                      ) : (
-                        p.referencia || '—'
-                      )}
+                      <span style={{
+                        ...styles.badge,
+                        backgroundColor:
+                          p.estado === 'completado' ? '#28a745' :
+                          p.estado === 'pendiente' ? '#ffc107' : '#e94560'
+                      }}>
+                        {p.estado === 'completado' ? 'confirmado' : p.estado === 'fallido' ? 'rechazado' : p.estado}
+                      </span>
+                    </td>
+                    <td style={styles.td}>
+                      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        {p.referencia && p.referencia.startsWith('http') && (
+                          <a href={p.referencia} target="_blank" rel="noreferrer" className="btn btn-secundario btn-sm">
+                            Ver comprobante
+                          </a>
+                        )}
+                        {p.estado === 'completado' && (
+                          <Link to={`/recibo/${p.id_pago}`} className="btn btn-suave btn-sm">Ver recibo</Link>
+                        )}
+                        {!(p.referencia && p.referencia.startsWith('http')) && p.estado !== 'completado' && '—'}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1018,6 +1126,42 @@ function PanelAdmin() {
           </table>
         )}
       </div>
+        {pagoARechazar && (
+          <div style={styles.modalOverlay}>
+            <div style={{ ...styles.modal, maxWidth: '460px' }}>
+              <h3 style={{ marginTop: 0, color: '#1a1a2e' }}>No recibí este pago</h3>
+              <p style={{ color: '#555', lineHeight: 1.5 }}>
+                El pago en efectivo de <strong>L. {pagoARechazar.monto}</strong> quedará como rechazado
+                y el inquilino recibirá un aviso. Puedes indicar el motivo (opcional).
+              </p>
+              <textarea
+                value={notaRechazoPago}
+                onChange={(e) => setNotaRechazoPago(e.target.value)}
+                maxLength={300}
+                rows={3}
+                placeholder="Ej: Aún no me ha entregado el dinero"
+                style={{ width: '100%', boxSizing: 'border-box', padding: '0.6rem', borderRadius: '4px', border: '1px solid #ddd', fontFamily: 'inherit' }}
+              />
+              <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'flex-end', marginTop: '1.2rem' }}>
+                <button
+                  onClick={() => setPagoARechazar(null)}
+                  className="btn btn-suave"
+                  disabled={procesandoPago === pagoARechazar.id_pago}
+                >
+                  Volver
+                </button>
+                <button
+                  onClick={() => handleResolverPagoEfectivo(pagoARechazar, false, notaRechazoPago.trim() || null)}
+                  className="btn btn-peligro"
+                  disabled={procesandoPago === pagoARechazar.id_pago}
+                >
+                  {procesandoPago === pagoARechazar.id_pago ? 'Enviando...' : 'Rechazar pago'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {propiedadAEliminar && (
           <div style={styles.modalOverlay}>
             <div style={{ ...styles.modal, maxWidth: '460px' }}>
@@ -1303,6 +1447,7 @@ function PanelAdmin() {
 }
 
 const styles = {
+  avisoPagos: { margin: '0 0 1rem', color: '#6b5200', backgroundColor: '#fff8e1', border: '1px solid #ffe08a', borderRadius: '4px', padding: '0.6rem 0.8rem', fontSize: '0.88rem' },
   container: {
     padding: '2rem',
     fontFamily: 'sans-serif',

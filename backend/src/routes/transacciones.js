@@ -3,6 +3,14 @@ import supabase from '../db.js'
 
 const router = Router()
 
+async function usuarioDelToken(req) {
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '')
+  if (!token) return null
+  const { data, error } = await supabase.auth.getUser(token)
+  if (error || !data?.user) return null
+  return data.user
+}
+
 router.post('/aprobar-reserva', async (req, res) => {
   const { id_reserva, deposito = null, instrucciones_checkin = null } = req.body
 
@@ -51,6 +59,29 @@ router.post('/registrar-pago', async (req, res) => {
 
   if (error) return res.status(400).json({ error: error.message })
   res.status(201).json(data[0])
+})
+
+router.post('/resolver-pago-efectivo', async (req, res) => {
+  const user = await usuarioDelToken(req)
+  if (!user) return res.status(401).json({ error: 'Inicia sesión para confirmar pagos' })
+
+  const { id_pago, aceptar, nota = null } = req.body
+  if (!id_pago || typeof aceptar !== 'boolean') {
+    return res.status(400).json({ error: 'id_pago y aceptar (true/false) son obligatorios' })
+  }
+
+  const { data, error } = await supabase.rpc('fn_resolver_pago_efectivo', {
+    p_id_pago: Number(id_pago),
+    p_auth_user_id: user.id,
+    p_aceptar: aceptar,
+    p_nota: nota ? String(nota).trim().slice(0, 300) : null
+  })
+
+  if (error) {
+    const status = /Solo el propietario/.test(error.message) ? 403 : 400
+    return res.status(status).json({ error: error.message })
+  }
+  res.json(data[0])
 })
 
 router.post('/cancelar-contrato', async (req, res) => {
