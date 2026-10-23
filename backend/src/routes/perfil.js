@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import multer from 'multer'
 import supabase from '../db.js'
+import { usuarioDelToken } from '../utils/auth.js'
 
 const router = Router()
 const BUCKET = 'fotos-perfil'
@@ -10,15 +11,6 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 3 * 1024 * 1024 } // 3 MB
 })
-
-// Identifica al usuario con el token de sesión de Supabase que envía el frontend
-async function usuarioDelToken(req) {
-  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '')
-  if (!token) return null
-  const { data, error } = await supabase.auth.getUser(token)
-  if (error || !data?.user) return null
-  return data.user
-}
 
 // Busca el perfil del usuario: primero como propietario y luego como inquilino
 async function buscarPerfil(user) {
@@ -43,6 +35,7 @@ router.get('/', async (req, res) => {
     if (!encontrado) return res.status(404).json({ error: 'No se encontró tu perfil' })
 
     let { perfil } = encontrado
+    // Si cambió su correo en Supabase Auth, se sincroniza con la tabla
     if (user.email && perfil.email !== user.email) {
       await supabase.from(encontrado.tabla).update({ email: user.email }).eq(encontrado.llave, perfil[encontrado.llave])
       perfil = { ...perfil, email: user.email }

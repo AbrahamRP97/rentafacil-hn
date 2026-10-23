@@ -1,22 +1,10 @@
 import { Router } from 'express'
 import supabase from '../db.js'
+import { soloAdmin } from '../utils/auth.js'
 
 const router = Router()
 
 const redondear = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100
-
-async function soloAdmin(req, res, next) {
-  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '')
-  if (!token) return res.status(401).json({ error: 'Inicia sesión como administrador' })
-
-  const { data, error } = await supabase.auth.getUser(token)
-  if (error || !data?.user) return res.status(401).json({ error: 'Sesión inválida' })
-  if (data.user.app_metadata?.es_admin !== true) {
-    return res.status(403).json({ error: 'Solo el administrador de la plataforma puede ver esto' })
-  }
-  req.admin = data.user
-  next()
-}
 
 router.use(soloAdmin)
 

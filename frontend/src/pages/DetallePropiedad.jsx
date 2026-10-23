@@ -24,7 +24,7 @@ const ETIQUETAS_ESTADIA = {
   mensual: 'Estadía mensual'
 }
 
-function DetallePropiedades() {
+function DetallePropiedad() {
   const { id } = useParams()
   const { usuario } = useAuth()
 
@@ -559,4 +559,4 @@ const styles = {
   }
 }
 
-export default DetallePropiedades
+export default DetallePropiedad

@@ -26,7 +26,8 @@ function PanelAdmin() {
   const [pagosPropios, setPagosPropios] = useState([])
   const [depositoPorReserva, setDepositoPorReserva] = useState({})
   const [checkinPorReserva, setCheckinPorReserva] = useState({})
-  const [procesandoReserva, setProcesandoReserva] = useState(null)
+  const [reservaProcesandoId, setReservaProcesandoId] = useState(null)
+  const [contratoProcesandoId, setContratoProcesandoId] = useState(null)
   const [mostrarHistorialPagos, setMostrarHistorialPagos] = useState(false)
   const [mostrarContratos, setMostrarContratos] = useState(false)
   const [contratoACalificar, setContratoACalificar] = useState(null)
@@ -42,7 +43,7 @@ function PanelAdmin() {
   const [esPortada, setEsPortada] = useState(false)
   const [mostrarImagenes, setMostrarImagenes] = useState(false)
   const [subiendoImagen, setSubiendoImagen] = useState(false)
-  const [exito, setExito] = useState(false)
+  const [propiedadCreada, setPropiedadCreada] = useState(false)
   const [propiedadAEliminar, setPropiedadAEliminar] = useState(null)
   const [procesandoPago, setProcesandoPago] = useState(null)
   const [pagoARechazar, setPagoARechazar] = useState(null)
@@ -55,7 +56,7 @@ function PanelAdmin() {
   const [formEdicion, setFormEdicion] = useState({})
   const [guardandoEdicion, setGuardandoEdicion] = useState(false)
   const [errorEdicion, setErrorEdicion] = useState(null)
-  const [exitoEdicion, setExitoEdicion] = useState(null)
+  const [mensajeExito, setMensajeExito] = useState(null)
   const [error, setError] = useState(null)
   const [form, setForm] = useState({
     titulo: '',
@@ -223,8 +224,8 @@ function PanelAdmin() {
 
       setPagoARechazar(null)
       setNotaRechazoPago('')
-      setExitoEdicion(aceptar ? 'Pago en efectivo confirmado' : 'Pago en efectivo rechazado')
-      setTimeout(() => setExitoEdicion(null), 4000)
+      setMensajeExito(aceptar ? 'Pago en efectivo confirmado' : 'Pago en efectivo rechazado')
+      setTimeout(() => setMensajeExito(null), 4000)
       cargarDatos()
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo resolver el pago. Intenta de nuevo.')
@@ -240,10 +241,10 @@ function PanelAdmin() {
     try {
       const res = await deletePropiedad(propiedadAEliminar.id_propiedad)
       setPropiedadAEliminar(null)
-      setExitoEdicion(res.data?.accion === 'archivada'
+      setMensajeExito(res.data?.accion === 'archivada'
         ? 'Propiedad archivada: ya no aparece en el sitio y tu historial se conserva'
         : 'Propiedad eliminada correctamente')
-      setTimeout(() => setExitoEdicion(null), 4000)
+      setTimeout(() => setMensajeExito(null), 4000)
       cargarDatos()
     } catch (e) {
       setErrorEliminar(e.response?.data?.error || 'No se pudo eliminar la propiedad')
@@ -301,7 +302,7 @@ function PanelAdmin() {
   }, [])
 
   const handleAprobarReserva = async (id_reserva) => {
-    setProcesandoReserva(id_reserva)
+    setReservaProcesandoId(id_reserva)
     setError(null)
     try {
       const deposito = depositoPorReserva[id_reserva]
@@ -331,12 +332,12 @@ function PanelAdmin() {
     } catch (err) {
       setError('Error al aprobar la reserva. Verifica el depósito o intenta de nuevo.')
     } finally {
-      setProcesandoReserva(null)
+      setReservaProcesandoId(null)
     }
   }
 
   const handleRechazarReserva = async (id_reserva) => {
-    setProcesandoReserva(id_reserva)
+    setReservaProcesandoId(id_reserva)
     setError(null)
     try {
       await updateReserva(id_reserva, { estado: 'rechazada' })
@@ -356,12 +357,12 @@ function PanelAdmin() {
     } catch (err) {
       setError('Error al rechazar la reserva. Intenta de nuevo.')
     } finally {
-      setProcesandoReserva(null)
+      setReservaProcesandoId(null)
     }
   }
 
   const handleCancelarContrato = async (id_contrato) => {
-    setProcesandoReserva(id_contrato)
+    setContratoProcesandoId(id_contrato)
     setError(null)
     try {
       await cancelarContrato({ id_contrato })
@@ -381,7 +382,7 @@ function PanelAdmin() {
     } catch (err) {
       setError('Error al cancelar el contrato. Intenta de nuevo.')
     } finally {
-      setProcesandoReserva(null)
+      setContratoProcesandoId(null)
     }
   }
 
@@ -507,9 +508,9 @@ function PanelAdmin() {
         estancia_minima_noches: estanciaMinima
       })
       setPropiedadEditando(null)
-      setExitoEdicion('Propiedad actualizada correctamente')
+      setMensajeExito('Propiedad actualizada correctamente')
       cargarDatos()
-      setTimeout(() => setExitoEdicion(null), 3000)
+      setTimeout(() => setMensajeExito(null), 3000)
     } catch (err) {
       setErrorEdicion('Error al guardar los cambios. Intenta de nuevo.')
     } finally {
@@ -580,7 +581,7 @@ function PanelAdmin() {
         )
       }
 
-      setExito(true)
+      setPropiedadCreada(true)
       setMostrarFormulario(false)
       setForm({
         titulo: '', descripcion: '', precio_mensual: '',
@@ -593,7 +594,7 @@ function PanelAdmin() {
       imagenesNuevas.forEach(img => URL.revokeObjectURL(img.previewUrl))
       setImagenesNuevas([])
       cargarDatos()
-      setTimeout(() => setExito(false), 3000)
+      setTimeout(() => setPropiedadCreada(false), 3000)
     } catch (err) {
       setError('Error al crear la propiedad. Verifica los datos e intenta de nuevo.')
     }
@@ -634,8 +635,8 @@ function PanelAdmin() {
         </div>
       </div>
 
-      {exito && <p style={styles.exito}>✅ Propiedad creada exitosamente</p>}
-      {exitoEdicion && <p style={styles.exito}>✅ {exitoEdicion}</p>}
+      {propiedadCreada && <p style={styles.exito}>✅ Propiedad creada exitosamente</p>}
+      {mensajeExito && <p style={styles.exito}>✅ {mensajeExito}</p>}
       {error && <p style={styles.error}>{error}</p>}
 
       {reservasPendientes.length > 0 && (
@@ -688,14 +689,14 @@ function PanelAdmin() {
                       <button
                         onClick={() => handleAprobarReserva(r.id_reserva)}
                         className="btn btn-exito btn-sm"
-                        disabled={procesandoReserva === r.id_reserva}
+                        disabled={reservaProcesandoId === r.id_reserva}
                       >
-                        {procesandoReserva === r.id_reserva ? '...' : 'Aprobar'}
+                        {reservaProcesandoId === r.id_reserva ? '...' : 'Aprobar'}
                       </button>
                       <button
                         onClick={() => handleRechazarReserva(r.id_reserva)}
                         className="btn btn-peligro btn-sm"
-                        disabled={procesandoReserva === r.id_reserva}
+                        disabled={reservaProcesandoId === r.id_reserva}
                       >
                         Rechazar
                       </button>
@@ -765,9 +766,9 @@ function PanelAdmin() {
                           <button
                             onClick={() => handleCancelarContrato(c.id_contrato)}
                             className="btn btn-peligro btn-sm"
-                            disabled={procesandoReserva === c.id_contrato}
+                            disabled={contratoProcesandoId === c.id_contrato}
                           >
-                            {procesandoReserva === c.id_contrato ? '...' : 'Cancelar'}
+                            {contratoProcesandoId === c.id_contrato ? '...' : 'Cancelar'}
                           </button>
                         )}
                         {c.estado === 'cancelado' && (

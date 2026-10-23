@@ -5,7 +5,7 @@ import { AuthProvider } from './context/AuthContext'
 import Navbar from './components/Navbar'
 import Home from './pages/Home'
 import Propiedades from './pages/Propiedades'
-import DetallePropiedades from './pages/DetallePropiedades'
+import DetallePropiedad from './pages/DetallePropiedad'
 import Login from './pages/Login'
 import Registro from './pages/Registro'
 import PanelAdmin from './pages/PanelAdmin'
@@ -28,7 +28,7 @@ createRoot(document.getElementById('root')).render(
         <Routes>
           <Route path="/"                element={<Home />} />
           <Route path="/propiedades"     element={<Propiedades />} />
-          <Route path="/propiedades/:id" element={<DetallePropiedades />} />
+          <Route path="/propiedades/:id" element={<DetallePropiedad />} />
           <Route path="/login"           element={<Login />} />
           <Route path="/registro"        element={<Registro />} />
           <Route path="/admin"           element={

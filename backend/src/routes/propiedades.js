@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import supabase from '../db.js'
+import { usuarioDelToken } from '../utils/auth.js'
 
 const router = Router()
 
@@ -44,14 +45,6 @@ router.put('/:id', async (req, res) => {
   if (error) return res.status(500).json({ error: error.message })
   res.json(data[0])
 })
-
-async function usuarioDelToken(req) {
-  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '')
-  if (!token) return null
-  const { data, error } = await supabase.auth.getUser(token)
-  if (error || !data?.user) return null
-  return data.user
-}
 
 // DELETE /:id — elimina la propiedad del listado.
 router.delete('/:id', async (req, res) => {
