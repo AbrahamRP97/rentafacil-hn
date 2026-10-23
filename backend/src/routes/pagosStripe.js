@@ -1,10 +1,10 @@
 import { Router } from 'express'
 import Stripe from 'stripe'
+import supabase from '../db.js'
 
 const router = Router()
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
-// Crea una sesión de pago y devuelve la URL a la que el inquilino debe ser redirigido
 router.post('/crear-sesion', async (req, res) => {
   try {
     const { id_contrato, monto, titulo_propiedad } = req.body
@@ -12,6 +12,15 @@ router.post('/crear-sesion', async (req, res) => {
     if (!id_contrato || !monto) {
       return res.status(400).json({ error: 'id_contrato y monto son obligatorios' })
     }
+
+    const montoBase = Number(monto)
+    if (!Number.isFinite(montoBase) || montoBase <= 0) {
+      return res.status(400).json({ error: 'El monto debe ser mayor a cero' })
+    }
+    const { data: com, error: errCom } = await supabase.rpc('fn_calcular_comision', { p_monto: montoBase })
+    if (errCom) return res.status(500).json({ error: errCom.message })
+    const cargoServicio = Number(com?.[0]?.out_comision_inquilino || 0)
+    const totalACobrar = Math.round((montoBase + cargoServicio) * 100) / 100
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -22,10 +31,15 @@ router.post('/crear-sesion', async (req, res) => {
           product_data: {
             name: titulo_propiedad ? `Pago - ${titulo_propiedad}` : `Pago contrato #${id_contrato}`
           },
-          unit_amount: Math.round(Number(monto) * 100)
+          unit_amount: Math.round(totalACobrar * 100)
         },
         quantity: 1
       }],
+      metadata: {
+        id_contrato: String(id_contrato),
+        monto_base: String(montoBase),
+        cargo_servicio: String(cargoServicio)
+      },
       success_url: `${process.env.FRONTEND_URL}/mis-reservas?pago=exito&id_contrato=${id_contrato}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL}/mis-reservas?pago=cancelado`
     })
@@ -36,7 +50,6 @@ router.post('/crear-sesion', async (req, res) => {
   }
 })
 
-// Verifica que el pago realmente se completó en Stripe antes de registrarlo en la BD
 router.post('/verificar-sesion', async (req, res) => {
   try {
     const { session_id } = req.body
@@ -50,7 +63,7 @@ router.post('/verificar-sesion', async (req, res) => {
 
     res.json({
       confirmado: true,
-      monto: session.amount_total / 100
+      monto: session.metadata?.monto_base ? Number(session.metadata.monto_base) : session.amount_total / 100
     })
   } catch (err) {
     res.status(500).json({ error: err.message })

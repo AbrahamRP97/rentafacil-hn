@@ -11,6 +11,16 @@ async function usuarioDelToken(req) {
   return data.user
 }
 
+router.get('/config-comisiones', async (req, res) => {
+  const { data, error } = await supabase
+    .from('config_comisiones')
+    .select('pct_propietario, pct_inquilino')
+    .eq('id', 1)
+    .maybeSingle()
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data || { pct_propietario: 0, pct_inquilino: 0 })
+})
+
 router.post('/aprobar-reserva', async (req, res) => {
   const { id_reserva, deposito = null, instrucciones_checkin = null } = req.body
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getPagos, getContrato, getPropiedad, getInquilino } from '../services/api'
-import { montoALetras } from '../utils/numeroAletras'
+import { montoALetras } from '../utils/numeroALetras'
 
 const formatoFecha = (valor) =>
   new Date(valor).toLocaleDateString('es-HN', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -76,6 +76,8 @@ function ReciboPago() {
     )
   }
 
+  const cargoServicio = Number(pago.comision_inquilino || 0)
+  const totalPagado = Number(pago.monto) + cargoServicio
   const numeroRecibo = `REC-${String(pago.id_pago).padStart(6, '0')}`
   const numeroContrato = `RF-${String(contrato.id_contrato).padStart(6, '0')}`
   const fechaRecibo = formatoFecha(pago.fecha_confirmacion || pago.fecha_pago)
@@ -109,8 +111,8 @@ function ReciboPago() {
 
         <div style={styles.montoCaja}>
           <span style={styles.montoEtiqueta}>Monto recibido</span>
-          <span style={styles.monto}>L. {formatoLempiras(pago.monto)}</span>
-          <span style={styles.montoLetras}>{montoALetras(pago.monto)}</span>
+          <span style={styles.monto}>L. {formatoLempiras(totalPagado)}</span>
+          <span style={styles.montoLetras}>{montoALetras(totalPagado)}</span>
         </div>
 
         <table style={styles.tabla}>
@@ -131,6 +133,12 @@ function ReciboPago() {
                 {' '}(del {formatoFecha(contrato.fecha_inicio)} al {formatoFecha(contrato.fecha_fin)})
               </td>
             </tr>
+            {cargoServicio > 0 && (
+              <>
+                <tr><td style={styles.etiqueta}>Monto del alquiler</td><td style={styles.valor}>L. {formatoLempiras(pago.monto)}</td></tr>
+                <tr><td style={styles.etiqueta}>Cargo de servicio</td><td style={styles.valor}>L. {formatoLempiras(cargoServicio)} (RentaFácil HN)</td></tr>
+              </>
+            )}
             <tr><td style={styles.etiqueta}>Método de pago</td><td style={styles.valor}>{NOMBRE_METODO[pago.metodo_pago] || pago.metodo_pago}</td></tr>
           </tbody>
         </table>

@@ -15,6 +15,7 @@ import MisReservas from './pages/MisReservas'
 import ContratoDigital from './pages/ContratoDigital'
 import MiPerfil from './pages/MiPerfil'
 import ReciboPago from './pages/ReciboPago'
+import AdminPlataforma from './pages/AdminPlataforma'
 import RutaProtegida from './components/RutaProtegida'
 import './index.css'
 import './botones.css'
@@ -53,6 +54,11 @@ createRoot(document.getElementById('root')).render(
           <Route path="/perfil" element={
             <RutaProtegida>
               <MiPerfil />
+            </RutaProtegida>
+          } />
+          <Route path="/admin-plataforma" element={
+            <RutaProtegida>
+              <AdminPlataforma />
             </RutaProtegida>
           } />
           <Route path="/recibo/:id_pago" element={

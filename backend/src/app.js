@@ -17,6 +17,7 @@ import comprobantesRouter   from './routes/comprobantes.js'
 import pagosStripeRouter    from './routes/pagosStripe.js'
 import preciosRouter        from './routes/precios.js'
 import perfilRouter         from './routes/perfil.js'
+import adminRouter          from './routes/admin.js'
 
 dotenv.config()
 
@@ -39,6 +40,7 @@ app.use('/api/comprobantes',  comprobantesRouter)
 app.use('/api/pagos-stripe',  pagosStripeRouter)
 app.use('/api/precios',       preciosRouter)
 app.use('/api/perfil',        perfilRouter)
+app.use('/api/admin',         adminRouter)
 
 app.get('/', (req, res) => {
   res.json({ message: 'RentaFácil HN API funcionando ✅' })

@@ -101,3 +101,9 @@ export const subirFotoPerfil = async (archivo) => {
   return api.post('/perfil/foto', formData, { headers: await authHeaders() })
 }
 export const quitarFotoPerfil = async () => api.delete('/perfil/foto', { headers: await authHeaders() })
+export const getConfigComisiones = () => api.get('/transacciones/config-comisiones')
+export const adminResumen = async () => api.get('/admin/resumen', { headers: await authHeaders() })
+export const adminLiquidar = async (id_propietario) =>
+  api.post('/admin/liquidar', { id_propietario }, { headers: await authHeaders() })
+export const adminActualizarConfig = async (datos) =>
+  api.put('/admin/config', datos, { headers: await authHeaders() })

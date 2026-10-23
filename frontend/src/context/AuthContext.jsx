@@ -13,7 +13,8 @@ function mapUsuario(supabaseUser) {
     apellido: supabaseUser.user_metadata?.apellido || '',
     telefono: supabaseUser.user_metadata?.telefono || '',
     foto_url: supabaseUser.user_metadata?.foto_url || '',
-    rol: supabaseUser.user_metadata?.rol || 'inquilino'
+    rol: supabaseUser.user_metadata?.rol || 'inquilino',
+    es_admin: supabaseUser.app_metadata?.es_admin === true
   }
 }
 
@@ -27,6 +28,7 @@ export function AuthProvider({ children }) {
       setCargandoSesion(false)
     })
 
+    // Escucha cambios de sesión (login, logout, refresh de token) en tiempo real
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUsuario(mapUsuario(session?.user))
     })

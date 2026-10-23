@@ -3,7 +3,9 @@ import { useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getInquilinoPorAuth, getReservas, getContratos, getPagos,
   registrarPago, cancelarContrato, enviarMensaje,
-  subirComprobante, crearSesionPago, verificarSesionPago, createCalificacion } from '../services/api'
+  subirComprobante, crearSesionPago, verificarSesionPago, createCalificacion,
+  getConfigComisiones } from '../services/api'
+import { calcularCargo, formatoL } from '../utils/comisiones'
 
 const LIMITE_EFECTIVO = 10000
 
@@ -19,6 +21,7 @@ function MisReservas() {
   const [error, setError] = useState(null)
   const [exito, setExito] = useState(null)
   const [procesando, setProcesando] = useState(null)
+  const [pctInquilino, setPctInquilino] = useState(0)
 
   const [formPago, setFormPago] = useState({})
   const [archivoComprobante, setArchivoComprobante] = useState({})
@@ -45,6 +48,9 @@ function MisReservas() {
 
   useEffect(() => {
     cargarDatos()
+    getConfigComisiones()
+      .then(res => setPctInquilino(Number(res.data.pct_inquilino) || 0))
+      .catch(() => setPctInquilino(0))
   }, [])
 
   useEffect(() => {
@@ -73,7 +79,6 @@ function MisReservas() {
       setError('El pago con tarjeta fue cancelado.')
       setSearchParams({})
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (!usuario || loading) return <p style={styles.mensaje}>Cargando tus reservas...</p>
@@ -117,8 +122,9 @@ function MisReservas() {
       return
     }
 
-    if (datos.metodo_pago === 'efectivo' && parseFloat(datos.monto) > LIMITE_EFECTIVO) {
-      setError('El pago en efectivo no puede superar L. 10,000.00. Para montos mayores usa transferencia o tarjeta.')
+    const totalAEntregar = parseFloat(datos.monto) + calcularCargo(datos.monto, pctInquilino)
+    if (datos.metodo_pago === 'efectivo' && totalAEntregar > LIMITE_EFECTIVO) {
+      setError('El pago en efectivo no puede superar L. 10,000.00 en total (incluye el cargo de servicio). Para montos mayores usa transferencia o tarjeta.')
       return
     }
 
@@ -165,14 +171,14 @@ function MisReservas() {
           id_propietario: reserva.PROPIEDADES?.id_propietario,
           id_inquilino: reserva.id_inquilino,
           remitente: 'inquilino',
-          contenido: `💵 Avisé un pago en efectivo de L. ${parseFloat(datos.monto).toFixed(2)} por "${reserva.PROPIEDADES?.titulo}". Por favor confírmalo en tu panel cuando lo recibas.`
+          contenido: `💵 Avisé un pago en efectivo por "${reserva.PROPIEDADES?.titulo}": L. ${formatoL(datos.monto)} de alquiler + L. ${formatoL(calcularCargo(datos.monto, pctInquilino))} de cargo de servicio = L. ${formatoL(totalAEntregar)} en total. Por favor confírmalo en tu panel cuando lo recibas.`
         }).catch(() => {})
       }
 
       setFormPago({ ...formPago, [id_contrato]: {} })
       setArchivoComprobante({ ...archivoComprobante, [id_contrato]: null })
       setExito(datos.metodo_pago === 'efectivo'
-        ? 'Aviso enviado. El pago contará cuando el propietario confirme que recibió el efectivo.'
+        ? `Aviso enviado. Entrega L. ${formatoL(totalAEntregar)} al propietario; el pago contará cuando él confirme que lo recibió.`
         : 'Pago registrado correctamente')
       cargarDatos()
       setTimeout(() => setExito(null), 5000)
@@ -290,7 +296,7 @@ function MisReservas() {
                       <div style={styles.historialPagos}>
                         {r.pagosDelContrato.map(p => (
                           <p key={p.id_pago} style={styles.itemPago}>
-                            L. {p.monto} — {p.metodo_pago} — {p.fecha_pago}
+                            L. {p.monto}{Number(p.comision_inquilino) > 0 && <span style={styles.cargoServicio}> (+ L. {formatoL(p.comision_inquilino)} cargo de servicio)</span>} — {p.metodo_pago} — {p.fecha_pago}
                             {p.estado === 'pendiente' && (
                               <span style={styles.etiquetaPendiente}>⏳ Pendiente de confirmación del propietario</span>
                             )}
@@ -338,9 +344,17 @@ function MisReservas() {
                         />
                       )}
 
+                      {metodoSeleccionado && parseFloat(formPago[r.contrato.id_contrato]?.monto) > 0 && (
+                        <p style={styles.desglose}>
+                          Se aplican <strong>L. {formatoL(formPago[r.contrato.id_contrato].monto)}</strong> a tu contrato
+                          {pctInquilino > 0 && <> + cargo de servicio de RentaFácil ({pctInquilino}%): <strong>L. {formatoL(calcularCargo(formPago[r.contrato.id_contrato].monto, pctInquilino))}</strong></>}
+                          {' '}= <strong>Total a pagar: L. {formatoL(parseFloat(formPago[r.contrato.id_contrato].monto) + calcularCargo(formPago[r.contrato.id_contrato].monto, pctInquilino))}</strong>
+                        </p>
+                      )}
+
                       {metodoSeleccionado === 'efectivo' && (
                         <p style={styles.avisoEfectivo}>
-                          💵 Máximo L. 10,000.00 por pago en efectivo. Entrega el dinero solo contra un recibo:
+                          💵 Máximo L. 10,000.00 en total por pago en efectivo (incluye el cargo de servicio). Entrega el dinero solo contra un recibo:
                           el pago cuenta cuando el propietario confirme que lo recibió.
                         </p>
                       )}
@@ -446,6 +460,18 @@ function MisReservas() {
 }
 
 const styles = {
+  desglose: {
+    flexBasis: '100%',
+    margin: 0,
+    padding: '0.6rem 0.8rem',
+    backgroundColor: '#eef4ff',
+    border: '1px solid #c9dafc',
+    borderRadius: '4px',
+    fontSize: '0.88rem',
+    color: '#1a3a6b',
+    lineHeight: 1.4
+  },
+  cargoServicio: { color: '#777', fontSize: '0.85em' },
   avisoEfectivo: {
     flexBasis: '100%',
     margin: 0,

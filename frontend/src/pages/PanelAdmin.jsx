@@ -5,6 +5,7 @@ import { getPropiedades, getReservas, getContratos, getPagos, createPropiedad,
   getImagenes, uploadImagen, deleteImagen, setImagenPortada, getPropietarioPorAuth,
   aprobarReserva, updateReserva, enviarMensaje, cancelarContrato, createUbicacion,
   createCalificacion, updatePropiedad, updateUbicacion, deletePropiedad, resolverPagoEfectivo } from '../services/api'
+import { formatoL } from '../utils/comisiones'
 import SimuladorPrecios from '../components/SimuladorPrecios'
 import SelectorUbicacion from '../components/SelectorUbicacion'
 
@@ -145,6 +146,18 @@ function PanelAdmin() {
     p => p.metodo_pago === 'efectivo' && p.estado === 'pendiente'
   )
   const pagosCompletados = pagosConDetalle.filter(p => p.estado === 'completado')
+
+  // Saldo con RentaFácil: transferencia/efectivo -> el propietario cobró y debe las comisiones;
+  // tarjeta -> RentaFácil cobró y le debe al propietario (monto - su comisión)
+  const pagosPorLiquidar = pagosCompletados.filter(
+    p => !p.liquidado && (Number(p.comision_inquilino) > 0 || Number(p.comision_propietario) > 0)
+  )
+  const debeARentaFacil = pagosPorLiquidar
+    .filter(p => p.metodo_pago !== 'tarjeta')
+    .reduce((s, p) => s + Number(p.comision_inquilino) + Number(p.comision_propietario), 0)
+  const rentaFacilLeDebe = pagosPorLiquidar
+    .filter(p => p.metodo_pago === 'tarjeta')
+    .reduce((s, p) => s + Number(p.monto) - Number(p.comision_propietario), 0)
 
   const cargarImagenes = async (id_propiedad) => {
     try {
@@ -794,6 +807,7 @@ function PanelAdmin() {
                 <th style={styles.th}>Propiedad</th>
                 <th style={styles.th}>Inquilino</th>
                 <th style={styles.th}>Monto</th>
+                <th style={styles.th}>Debes recibir (total)</th>
                 <th style={styles.th}>Fecha del aviso</th>
                 <th style={styles.th}>Acción</th>
               </tr>
@@ -804,6 +818,14 @@ function PanelAdmin() {
                   <td style={styles.td}>{p.contrato?.reserva?.PROPIEDADES?.titulo}</td>
                   <td style={styles.td}>{p.contrato?.reserva?.INQUILINOS?.nombre} {p.contrato?.reserva?.INQUILINOS?.apellido}</td>
                   <td style={styles.td}>L. {p.monto}</td>
+                  <td style={styles.td}>
+                    <strong>L. {formatoL(Number(p.monto) + Number(p.comision_inquilino || 0))}</strong>
+                    {Number(p.comision_inquilino) > 0 && (
+                      <span style={{ display: 'block', fontSize: '0.75rem', color: '#888' }}>
+                        incluye L. {formatoL(p.comision_inquilino)} de cargo de servicio
+                      </span>
+                    )}
+                  </td>
                   <td style={styles.td}>{p.fecha_pago}</td>
                   <td style={styles.td}>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -841,6 +863,14 @@ function PanelAdmin() {
               <p style={styles.resumenPagosTexto}>
                 {pagosCompletados.length} pago(s) confirmado(s) · Total: L. {pagosCompletados.reduce((s, p) => s + parseFloat(p.monto), 0).toFixed(2)}
               </p>
+              {(debeARentaFacil > 0 || rentaFacilLeDebe > 0) && (
+                <p style={styles.saldoPlataforma}>
+                  Saldo con RentaFácil:
+                  {debeARentaFacil > 0 && <> debes <strong>L. {formatoL(debeARentaFacil)}</strong> en comisiones (transferencias y efectivo)</>}
+                  {debeARentaFacil > 0 && rentaFacilLeDebe > 0 && ' ·'}
+                  {rentaFacilLeDebe > 0 && <> RentaFácil te debe <strong>L. {formatoL(rentaFacilLeDebe)}</strong> (pagos con tarjeta)</>}
+                </p>
+              )}
             </div>
             <span style={styles.flechaToggle}>{mostrarHistorialPagos ? '▲' : '▼'}</span>
           </div>
@@ -852,6 +882,7 @@ function PanelAdmin() {
                   <th style={styles.th}>Propiedad</th>
                   <th style={styles.th}>Inquilino</th>
                   <th style={styles.th}>Monto</th>
+                  <th style={styles.th}>Comisión / Neto</th>
                   <th style={styles.th}>Método</th>
                   <th style={styles.th}>Fecha</th>
                   <th style={styles.th}>Estado</th>
@@ -864,6 +895,14 @@ function PanelAdmin() {
                     <td style={styles.td}>{p.contrato?.reserva?.PROPIEDADES?.titulo}</td>
                     <td style={styles.td}>{p.contrato?.reserva?.INQUILINOS?.nombre} {p.contrato?.reserva?.INQUILINOS?.apellido}</td>
                     <td style={styles.td}>L. {p.monto}</td>
+                    <td style={styles.td}>
+                      {p.estado === 'completado' && Number(p.comision_propietario) > 0 ? (
+                        <>
+                          <span style={{ display: 'block', color: '#c0392b' }}>− L. {formatoL(p.comision_propietario)}</span>
+                          <strong>L. {formatoL(Number(p.monto) - Number(p.comision_propietario))}</strong>
+                        </>
+                      ) : '—'}
+                    </td>
                     <td style={styles.td}>{p.metodo_pago}</td>
                     <td style={styles.td}>{p.fecha_pago}</td>
                     <td style={styles.td}>
@@ -1447,6 +1486,7 @@ function PanelAdmin() {
 }
 
 const styles = {
+  saldoPlataforma: { margin: '0.4rem 0 0', fontSize: '0.88rem', color: '#1a3a6b', backgroundColor: '#eef4ff', border: '1px solid #c9dafc', borderRadius: '4px', padding: '0.4rem 0.7rem', display: 'inline-block' },
   avisoPagos: { margin: '0 0 1rem', color: '#6b5200', backgroundColor: '#fff8e1', border: '1px solid #ffe08a', borderRadius: '4px', padding: '0.6rem 0.8rem', fontSize: '0.88rem' },
   container: {
     padding: '2rem',

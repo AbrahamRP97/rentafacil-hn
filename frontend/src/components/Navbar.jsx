@@ -68,6 +68,10 @@ function Navbar() {
           </Link>
         )}
 
+        {usuario?.es_admin && (
+          <Link to="/admin-plataforma" className="btn btn-claro btn-sm">Admin plataforma</Link>
+        )}
+
         {!usuario && (
           <>
             <Link to="/login" style={styles.link}>Iniciar Sesión</Link>
